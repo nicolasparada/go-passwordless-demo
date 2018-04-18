@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passwordless Demo</title>
+</head>
+
+<body>
+    <h1>Passwordless Demo</h1>
+
+    <div id="authenticated" hidden>
+        <button id="logout">Logout</button>
+    </div>
+
+    <div id="guest" hidden>
+        <h2>Access</h2>
+
+        <form id="access-form">
+            <label for="email-input">Email:</label>
+            <input type="email" id="email-input" placeholder="Email" required>
+            <button type="submit">Send Magic Link</button>
+        </form>
+    </div>
+
+
+    <script>
+        const authUserItem = localStorage.getItem('auth_user')
+        const expiresAtItem = localStorage.getItem('expires_at')
+
+        let authUser
+        let authenticated = false
+
+        if (authUserItem !== null && expiresAtItem !== null) {
+            const expiresAt = new Date(expiresAtItem)
+            if (!isNaN(expiresAt.getDate()) && expiresAt >= new Date()) {
+                try {
+                    authUser = JSON.parse(authUserItem)
+                    authenticated = true
+                } catch (_) {
+                    // localStorage.clear()
+                }
+            } else {
+                // localStorage.clear()
+            }
+        }
+
+        const authenticatedDiv = document.getElementById('authenticated')
+        const guestDiv = document.getElementById('guest')
+
+        if (authenticated) {
+            authenticatedDiv.hidden = false
+            authenticatedDiv.insertBefore(
+                document.createTextNode(`Welcome back, ${authUser.username} 👋`),
+                authenticatedDiv.firstChild
+            )
+        } else {
+            guestDiv.hidden = false
+        }
+
+        const logoutButton = /** */ (document.getElementById('logout'))
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.clear()
+            location.reload()
+        })
+
+        const accessForm = /** @type {HTMLFormElement} */ (document.getElementById('access-form'))
+        const emailInput = /** @type {HTMLInputElement} */ (document.getElementById('email-input'))
+        const accessButton = /** @type {HTMLButtonElement} */ (accessForm.querySelector('[type=submit]'))
+
+        /**
+         * @param {Response} res
+         */
+        const handleResponse = res => res.text().then(text => {
+            try {
+                return JSON.parse(text)
+            } catch (_) {
+                return { message: text }
+            }
+        })
+
+        accessForm.addEventListener('submit', async ev => {
+            ev.preventDefault()
+            const email = emailInput.value
+            emailInput.disabled = true
+            accessButton.disabled = true
+            try {
+                const res = await fetch('/api/passwordless/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        redirectUri: location.origin + '/callback',
+                    }),
+                })
+                const payload = await handleResponse(res)
+
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        if (confirm("No user found with that email. Do you want to create an account?")) {
+                            const username = prompt("Enter username")
+                            if (username === null) return
+                            fetch('/api/users', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email, username })
+                            }).then(async res => {
+                                const payload = await handleResponse(res)
+                                if (!res.ok) {
+                                    if ('email' in payload) {
+                                        alert(payload.email)
+                                    } else if ('username' in payload) {
+                                        alert(payload.username)
+                                    } else {
+                                        alert(payload.message)
+                                    }
+                                    return
+                                }
+                                accessButton.click()
+                            })
+                        }
+                    } else if ('email' in payload) {
+                        emailInput.setCustomValidity(payload.email)
+                        setTimeout(() => {
+                            if ('reportValidity' in emailInput)
+                                emailInput['reportValidity']()
+                        }, 0)
+                    } else {
+                        alert(payload.message)
+                    }
+                    return
+                }
+
+                alert('Magic link sent. Go check your email.')
+            } catch (err) {
+                console.error(err)
+            } finally {
+                emailInput.disabled = false
+                accessButton.disabled = false
+            }
+        })
+
+        emailInput.addEventListener('input', () => {
+            emailInput.setCustomValidity('')
+        })
+    </script>
+</body>
+
+</html>

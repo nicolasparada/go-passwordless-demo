@@ -1,0 +1,20 @@
+[[constraint]]
+  name = "github.com/dgrijalva/jwt-go"
+  version = "3.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lib/pq"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/matryer/way"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[metadata.heroku]
+  root-package = "github.com/nicolasparada/passwordless-demo"
+  install = ["."]
+  go-version = "go1.10.0"

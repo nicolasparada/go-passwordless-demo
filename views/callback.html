@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passwordless Demo</title>
+</head>
+
+<body>
+    <h1>Authenticating you...</h1>
+    <script>
+        const title = document.querySelector('h1')
+
+        const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
+        const jwt = f.get('jwt')
+        const expiresAt = f.get('expires_at')
+
+        if (typeof jwt === 'string' && typeof expiresAt === 'string' && !isNaN(new Date(expiresAt).getDate())) {
+            fetch('/api/auth_user', {
+                headers: { Authorization: `Bearer ${jwt}` }
+            }).then(async res => {
+                const payload = await handleResponse(res)
+                if (!res.ok) {
+                    alert(payload.message)
+                    return
+                }
+
+                let authUserStr
+                try {
+                    authUserStr = JSON.stringify(payload)
+                } catch (_) {
+                    alert('Something went wrong')
+                    return
+                }
+
+                localStorage.setItem('auth_user', authUserStr)
+                localStorage.setItem('expires_at', expiresAt)
+                location.assign('/')
+            }).catch(console.error)
+        } else {
+            location.assign('/')
+        }
+
+        /**
+         * @param {Response} res
+         */
+        const handleResponse = res => res.text().then(text => {
+            try {
+                return JSON.parse(text)
+            } catch (_) {
+                return { message: text }
+            }
+        })
+    </script>
+</body>
+
+</html>
