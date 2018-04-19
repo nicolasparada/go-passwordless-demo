@@ -26,8 +26,8 @@ type ContextKey int
 var (
 	db     *sql.DB
 	config struct {
-		appURL      *url.URL
 		port        int
+		appURL      *url.URL
 		databaseURL string
 		jwtKey      []byte
 		smtpAddr    string

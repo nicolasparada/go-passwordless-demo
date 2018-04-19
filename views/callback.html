@@ -10,13 +10,16 @@
 <body>
     <h1>Authenticating you...</h1>
     <script>
-        const title = document.querySelector('h1')
-
         const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
         const jwt = f.get('jwt')
         const expiresAt = f.get('expires_at')
 
-        if (typeof jwt === 'string' && typeof expiresAt === 'string' && !isNaN(new Date(expiresAt).getDate())) {
+        function isDate(x) {
+            return typeof x === Date
+                || (typeof x === 'string' && !isNaN(new Date(x).getDate()))
+        }
+
+        if (typeof jwt === 'string' && isDate(expiresAt)) {
             fetch('/api/auth_user', {
                 headers: { Authorization: `Bearer ${jwt}` }
             }).then(async res => {
