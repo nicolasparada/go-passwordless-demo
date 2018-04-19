@@ -36,8 +36,8 @@ var (
 )
 
 func init() {
-	config.appURL, _ = url.Parse(env("APP_URL", "http://localhost/"))
 	config.port, _ = strconv.Atoi(env("PORT", "80"))
+	config.appURL, _ = url.Parse(env("APP_URL", "http://localhost:"+strconv.Itoa(config.port)+"/"))
 	config.databaseURL = env(
 		"DATABASE_URL",
 		"postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
