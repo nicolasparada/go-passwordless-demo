@@ -2,4 +2,3 @@ vendor
 cockroach-data
 *.exe
 *.http
-*.sql
