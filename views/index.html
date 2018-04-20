@@ -25,126 +25,79 @@
     </div>
 
 
-    <script>
-        const authUserItem = localStorage.getItem('auth_user')
-        const expiresAtItem = localStorage.getItem('expires_at')
+    <script type="module">
+        import http from '/js/http.js'
+        import { getAuthUser, logout } from '/js/auth.js'
 
-        let authUser
-        let authenticated = false
+        const authUser = getAuthUser()
 
-        if (authUserItem !== null && expiresAtItem !== null) {
-            const expiresAt = new Date(expiresAtItem)
-            if (!isNaN(expiresAt.getDate()) && expiresAt >= new Date()) {
-                try {
-                    authUser = JSON.parse(authUserItem)
-                    authenticated = true
-                } catch (_) {
-                    // localStorage.clear()
-                }
-            } else {
-                // localStorage.clear()
-            }
-        }
-
-        const authenticatedDiv = document.getElementById('authenticated')
-        const guestDiv = document.getElementById('guest')
-
-        if (authenticated) {
+        if (authUser !== null) {
+            const greeting = document.createTextNode(`Welcome back, ${authUser.username} 👋`)
+            const authenticatedDiv = document.getElementById('authenticated')
             authenticatedDiv.hidden = false
-            authenticatedDiv.insertBefore(
-                document.createTextNode(`Welcome back, ${authUser.username} 👋`),
-                authenticatedDiv.firstChild
-            )
+            authenticatedDiv.insertBefore(greeting, authenticatedDiv.firstChild)
         } else {
-            guestDiv.hidden = false
+            document.getElementById('guest').hidden = false
         }
 
-        const logoutButton = /** */ (document.getElementById('logout'))
-
-        logoutButton.addEventListener('click', () => {
-            localStorage.clear()
-            location.reload()
-        })
+        document.getElementById('logout').addEventListener('click', logout)
 
         const accessForm = /** @type {HTMLFormElement} */ (document.getElementById('access-form'))
         const emailInput = /** @type {HTMLInputElement} */ (document.getElementById('email-input'))
         const accessButton = /** @type {HTMLButtonElement} */ (accessForm.querySelector('[type=submit]'))
-
-        /**
-         * @param {Response} res
-         */
-        const handleResponse = res => res.text().then(text => {
-            try {
-                return JSON.parse(text)
-            } catch (_) {
-                return { message: text }
-            }
-        })
 
         accessForm.addEventListener('submit', async ev => {
             ev.preventDefault()
             const email = emailInput.value
             emailInput.disabled = true
             accessButton.disabled = true
-            try {
-                const res = await fetch('/api/passwordless/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email,
-                        redirectUri: location.origin + '/callback',
-                    }),
-                })
-                const payload = await handleResponse(res)
-
-                if (!res.ok) {
-                    if (res.status === 404) {
-                        if (confirm("No user found with that email. Do you want to create an account?")) {
-                            const username = prompt("Enter username")
-                            if (username === null) return
-                            fetch('/api/users', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email, username })
-                            }).then(async res => {
-                                const payload = await handleResponse(res)
-                                if (!res.ok) {
-                                    if ('email' in payload) {
-                                        alert(payload.email)
-                                    } else if ('username' in payload) {
-                                        alert(payload.username)
-                                    } else {
-                                        alert(payload.message)
-                                    }
-                                    return
-                                }
-                                accessButton.click()
-                            })
-                        }
-                    } else if ('email' in payload) {
-                        emailInput.setCustomValidity(payload.email)
-                        setTimeout(() => {
-                            if ('reportValidity' in emailInput)
-                                emailInput['reportValidity']()
-                        }, 0)
-                    } else {
-                        alert(payload.message)
-                    }
-                    return
-                }
-
+            http.post('/api/passwordless/start', {
+                email,
+                redirectUri: location.origin + '/callback',
+            }).then(() => {
                 alert('Magic link sent. Go check your email.')
-            } catch (err) {
-                console.error(err)
-            } finally {
+            }).catch(err => {
+                if (res.status === 404) {
+                    if (confirm("No user found with that email. Do you want to create an account?")) {
+                        const username = promptLoop("Enter username")
+                        if (username === null) return
+
+                        http.post('/api/users', { email, username }).then(() => {
+                            accessButton.click()
+                        }).catch(err => {
+                            if ('email' in err) {
+                                alert(err.email)
+                            } else if ('username' in err) {
+                                alert(err.username)
+                            } else {
+                                alert(err.message)
+                            }
+                        })
+                    }
+                } else if ('email' in err) {
+                    emailInput.setCustomValidity(err.email)
+                    setTimeout(() => {
+                        if ('reportValidity' in emailInput) emailInput.reportValidity()
+                    }, 0)
+                } else {
+                    alert(err.message)
+                }
+            }).then(() => {
                 emailInput.disabled = false
                 accessButton.disabled = false
-            }
+            })
         })
 
         emailInput.addEventListener('input', () => {
             emailInput.setCustomValidity('')
         })
+
+        function promptLoop(message) {
+            let result = prompt(message)
+            if (result === null) return null
+            result = result.trim()
+            return result === '' ? promptLoop(message) : result
+        }
     </script>
 </body>
 

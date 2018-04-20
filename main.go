@@ -72,6 +72,7 @@ func main() {
 	router.Handle("GET", "/api/auth_user", authRequired(getAuthUser))
 	router.HandleFunc("GET", "/", serveFile("views/index.html"))
 	router.HandleFunc("GET", "/callback", serveFile("views/callback.html"))
+	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
 
 	addr := fmt.Sprintf(":%d", config.port)
 	log.Printf("starting server at %s 🚀\n", config.appURL)

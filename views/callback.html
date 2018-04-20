@@ -9,52 +9,40 @@
 
 <body>
     <h1>Authenticating you...</h1>
-    <script>
+    <script type="module">
+        import http from '/js/http.js'
+
         const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
         const jwt = f.get('jwt')
         const expiresAt = f.get('expires_at')
 
-        function isDate(x) {
-            return typeof x === Date
-                || (typeof x === 'string' && !isNaN(new Date(x).getDate()))
-        }
-
         if (typeof jwt === 'string' && isDate(expiresAt)) {
-            fetch('/api/auth_user', {
-                headers: { Authorization: `Bearer ${jwt}` }
-            }).then(async res => {
-                const payload = await handleResponse(res)
-                if (!res.ok) {
-                    alert(payload.message)
-                    return
-                }
-
-                let authUserStr
-                try {
-                    authUserStr = JSON.stringify(payload)
-                } catch (_) {
-                    alert('Something went wrong')
-                    return
-                }
-
-                localStorage.setItem('auth_user', authUserStr)
+            const headers = { Authorization: `Bearer ${jwt}` }
+            http.get('/api/auth_user', headers).then(stringify).then(authUser => {
+                localStorage.setItem('auth_user', authUser)
                 localStorage.setItem('expires_at', expiresAt)
-                location.assign('/')
-            }).catch(console.error)
+                localStorage.setItem('jwt', jwt)
+            }).catch(err => {
+                alert(err.message)
+            }).then(() => {
+                location.replace('/')
+            })
         } else {
-            location.assign('/')
+            alert('Invalid URL')
+            location.replace('/')
         }
 
-        /**
-         * @param {Response} res
-         */
-        const handleResponse = res => res.text().then(text => {
+        function isDate(x) {
+            return typeof x === Date || !isNaN(new Date(x).valueOf())
+        }
+
+        function stringify(x) {
             try {
-                return JSON.parse(text)
-            } catch (_) {
-                return { message: text }
+                return Promise.resolve(JSON.stringify(x))
+            } catch (err) {
+                return Promise.reject(err)
             }
-        })
+        }
     </script>
 </body>
 
