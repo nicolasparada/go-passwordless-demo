@@ -11,7 +11,7 @@ const emailInput = /** @type {HTMLInputElement} */ (document.getElementById('ema
 const accessButton = /** @type {HTMLButtonElement} */ (accessForm.querySelector('[type=submit]'))
 
 logoutButton.addEventListener('click', logout)
-accessForm.addEventListener('submit', onSendMagicLinkSubmit)
+accessForm.addEventListener('submit', onAccessFormSubmit)
 emailInput.addEventListener('input', cleanInputError)
 
 if (authenticated) {
@@ -30,11 +30,14 @@ function logout() {
 /**
  * @param {Event} ev
  */
-function onSendMagicLinkSubmit(ev) {
+function onAccessFormSubmit(ev) {
     ev.preventDefault()
+
     const email = emailInput.value
+
     emailInput.disabled = true
     accessButton.disabled = true
+
     sendMagicLink(email).then(onMagicLinkSent).catch(err => {
         if (err.statusCode === 404) {
             if (confirm("No user found with that email. Do you want to create an account?"))
@@ -75,7 +78,8 @@ function onMagicLinkSent() {
  */
 function runCreateUserProgram(email, username) {
     username = prompt("Enter username", username)
-    if (username === null) return
+    if (username === null)
+        return
 
     createUser(email, username).then(onUserCreated).catch(err => {
         if ('email' in err) {
