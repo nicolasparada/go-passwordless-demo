@@ -21,11 +21,6 @@ export function isAuthenticated() {
     return typeof localStorage.getItem('jwt') === 'string' && getAuthUser() !== null
 }
 
-export function logout() {
-    localStorage.clear()
-    location.reload()
-}
-
 /**
  * @typedef AuthUser
  * @property {string} id

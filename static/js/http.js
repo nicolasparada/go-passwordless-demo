@@ -28,7 +28,7 @@ async function handleResponse(res) {
 
 /**
  * @param {string} url
- * @param {{any: any}=} headers
+ * @param {{[key: string]: string}=} headers
  */
 function get(url, headers) {
     return fetch(url, { headers: Object.assign(getDefaultHeaders(), headers) })
@@ -37,8 +37,8 @@ function get(url, headers) {
 
 /**
  * @param {string} url
- * @param {({any: any}|File|FileList|FormData)=} payload
- * @param {{any: any}=} headers
+ * @param {(FormData|File|{[key: string]: any})=} payload
+ * @param {{[key: string]: string}=} headers
  */
 function post(url, payload, headers) {
     const options = {
@@ -46,17 +46,15 @@ function post(url, payload, headers) {
         headers: getDefaultHeaders(),
     }
 
-    if (typeof payload === 'object' && payload !== null) {
-        options['body'] = JSON.stringify(payload)
-        options.headers['Content-Type'] = 'application/json; charset=utf-8'
+    if (payload instanceof FormData) {
+        options['body'] = payload
+        options.headers['Content-Type'] = 'multipart/form-data'
     } else if (payload instanceof File) {
         options['body'] = payload
         options.headers['Content-Type'] = payload['type']
-    } else if (payload instanceof FileList) {
-        options['body'] = payload
-    } else if (payload instanceof FormData) {
-        options['body'] = payload
-        options.headers['Content-Type'] = 'multipart/form-data'
+    } else if (typeof payload === 'object' && payload !== null) {
+        options['body'] = JSON.stringify(payload)
+        options.headers['Content-Type'] = 'application/json; charset=utf-8'
     }
 
     if (typeof headers !== 'undefined') {

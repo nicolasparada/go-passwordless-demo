@@ -5,45 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Passwordless Demo</title>
+    <script src="/js/callback.js" type="module"></script>
 </head>
 
 <body>
     <h1>Authenticating you...</h1>
-    <script type="module">
-        import http from '/js/http.js'
-
-        const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
-        const jwt = f.get('jwt')
-        const expiresAt = f.get('expires_at')
-
-        if (typeof jwt === 'string' && isDate(expiresAt)) {
-            const headers = { Authorization: `Bearer ${jwt}` }
-            http.get('/api/auth_user', headers).then(stringify).then(authUser => {
-                localStorage.setItem('auth_user', authUser)
-                localStorage.setItem('expires_at', expiresAt)
-                localStorage.setItem('jwt', jwt)
-            }).catch(err => {
-                alert(err.message)
-            }).then(() => {
-                location.replace('/')
-            })
-        } else {
-            alert('Invalid URL')
-            location.replace('/')
-        }
-
-        function isDate(x) {
-            return typeof x === Date || !isNaN(new Date(x).valueOf())
-        }
-
-        function stringify(x) {
-            try {
-                return Promise.resolve(JSON.stringify(x))
-            } catch (err) {
-                return Promise.reject(err)
-            }
-        }
-    </script>
 </body>
 
 </html>

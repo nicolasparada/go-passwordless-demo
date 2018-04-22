@@ -5,13 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Passwordless Demo</title>
+    <script src="/js/index.js" type="module"></script>
 </head>
 
 <body>
     <h1>Passwordless Demo</h1>
 
     <div id="authenticated" hidden>
-        <button id="logout">Logout</button>
+        <button id="logout-button">Logout</button>
     </div>
 
     <div id="guest" hidden>
@@ -23,82 +24,6 @@
             <button type="submit">Send Magic Link</button>
         </form>
     </div>
-
-
-    <script type="module">
-        import http from '/js/http.js'
-        import { getAuthUser, logout } from '/js/auth.js'
-
-        const authUser = getAuthUser()
-
-        if (authUser !== null) {
-            const greeting = document.createTextNode(`Welcome back, ${authUser.username} 👋`)
-            const authenticatedDiv = document.getElementById('authenticated')
-            authenticatedDiv.hidden = false
-            authenticatedDiv.insertBefore(greeting, authenticatedDiv.firstChild)
-        } else {
-            document.getElementById('guest').hidden = false
-        }
-
-        document.getElementById('logout').addEventListener('click', logout)
-
-        const accessForm = /** @type {HTMLFormElement} */ (document.getElementById('access-form'))
-        const emailInput = /** @type {HTMLInputElement} */ (document.getElementById('email-input'))
-        const accessButton = /** @type {HTMLButtonElement} */ (accessForm.querySelector('[type=submit]'))
-
-        accessForm.addEventListener('submit', async ev => {
-            ev.preventDefault()
-            const email = emailInput.value
-            emailInput.disabled = true
-            accessButton.disabled = true
-            http.post('/api/passwordless/start', {
-                email,
-                redirectUri: location.origin + '/callback',
-            }).then(() => {
-                alert('Magic link sent. Go check your email.')
-            }).catch(err => {
-                if (res.status === 404) {
-                    if (confirm("No user found with that email. Do you want to create an account?")) {
-                        const username = promptLoop("Enter username")
-                        if (username === null) return
-
-                        http.post('/api/users', { email, username }).then(() => {
-                            accessButton.click()
-                        }).catch(err => {
-                            if ('email' in err) {
-                                alert(err.email)
-                            } else if ('username' in err) {
-                                alert(err.username)
-                            } else {
-                                alert(err.message)
-                            }
-                        })
-                    }
-                } else if ('email' in err) {
-                    emailInput.setCustomValidity(err.email)
-                    setTimeout(() => {
-                        if ('reportValidity' in emailInput) emailInput.reportValidity()
-                    }, 0)
-                } else {
-                    alert(err.message)
-                }
-            }).then(() => {
-                emailInput.disabled = false
-                accessButton.disabled = false
-            })
-        })
-
-        emailInput.addEventListener('input', () => {
-            emailInput.setCustomValidity('')
-        })
-
-        function promptLoop(message) {
-            let result = prompt(message)
-            if (result === null) return null
-            result = result.trim()
-            return result === '' ? promptLoop(message) : result
-        }
-    </script>
 </body>
 
 </html>
