@@ -37,7 +37,8 @@ function onSendMagicLinkSubmit(ev) {
     accessButton.disabled = true
     sendMagicLink(email).then(onMagicLinkSent).catch(err => {
         if (err.statusCode === 404) {
-            runCreateUserProgram(email)
+            if (confirm("No user found with that email. Do you want to create an account?"))
+                runCreateUserProgram(email)
         } else if ('email' in err) {
             emailInput.setCustomValidity(err.email)
             setTimeout(() => {
@@ -70,12 +71,10 @@ function onMagicLinkSent() {
 
 /**
  * @param {string} email
+ * @param {string=} username
  */
-function runCreateUserProgram(email) {
-    if (!confirm("No user found with that email. Do you want to create an account?"))
-        return
-
-    const username = prompt("Enter username")
+function runCreateUserProgram(email, username) {
+    username = prompt("Enter username", username)
     if (username === null) return
 
     createUser(email, username).then(onUserCreated).catch(err => {
@@ -83,6 +82,7 @@ function runCreateUserProgram(email) {
             alert(err.email)
         } else if ('username' in err) {
             alert(err.username)
+            runCreateUserProgram(email, username)
         } else {
             alert(err.message)
         }

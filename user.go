@@ -26,7 +26,7 @@ type CreateUserRequest struct {
 
 var (
 	rxEmail    = regexp.MustCompile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
-	rxUsername = regexp.MustCompile("^[a-zA-Z][\\w|-]{1,17}$")
+	rxUsername = regexp.MustCompile("^[a-zA-Z][\\w|-]{0,17}$")
 )
 
 func createUser(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +47,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.Username == "" {
 		errs["username"] = "Username required"
+	} else if !rxUsername.MatchString(input.Username) {
+		errs["username"] = "Invalid username"
 	}
 	if len(errs) != 0 {
 		respondJSON(w, errs, http.StatusUnprocessableEntity)
