@@ -1,3 +1,24 @@
+function importScript(path) {
+    let entry = window['importScript'].__db[path]
+    if (entry === undefined) {
+        const escape = path.replace(`'`, `\\'`)
+        const script = Object.assign(document.createElement('script'), {
+            type: 'module',
+            textContent: `import * as x from '${escape}'; importScript.__db['${escape}'].resolve(x);`,
+        })
+        entry = importScript.__db[path] = {}
+        entry.promise = new Promise((resolve, reject) => {
+            entry.resolve = resolve
+            script.onerror = reject
+        });
+        document.head.appendChild(script)
+        script.remove()
+    }
+    return entry.promise
+}
+importScript.__db = {};
+window['importScript'] = importScript;
+
 function createRouter(routes) {
     return function (pathname) {
         for (const [pattern, handler] of routes) {
@@ -16,7 +37,7 @@ const pagesCache = new Map()
 async function loadPage(name) {
     if (pagesCache.has(name))
         return pagesCache.get(name)
-    const page = await import(`/js/pages/${name}-page.js`).then(m => m.default)
+    const page = await importScript(`/js/pages/${name}-page.js`).then(m => m.default)
     pagesCache.set(name, page)
     return page
 }
