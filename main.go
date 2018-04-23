@@ -70,9 +70,8 @@ func main() {
 	router.HandleFunc("POST", "/api/passwordless/start", jsonRequired(passwordlessStart))
 	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
 	router.Handle("GET", "/api/auth_user", authRequired(getAuthUser))
-	router.HandleFunc("GET", "/", serveFile("views/index.html"))
-	router.HandleFunc("GET", "/callback", serveFile("views/callback.html"))
 	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
+	router.HandleFunc("GET", "/...", serveFile("static/index.html"))
 
 	addr := fmt.Sprintf(":%d", config.port)
 	log.Printf("starting server at %s 🚀\n", config.appURL)
