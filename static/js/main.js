@@ -1,102 +1,39 @@
-function importScript(path) {
-    let entry = window['importScript'].__db[path]
-    if (entry === undefined) {
-        const escape = path.replace(`'`, `\\'`)
-        const script = Object.assign(document.createElement('script'), {
-            type: 'module',
-            textContent: `import * as x from '${escape}'; importScript.__db['${escape}'].resolve(x);`,
-        })
-        entry = importScript.__db[path] = {}
-        entry.promise = new Promise((resolve, reject) => {
-            entry.resolve = resolve
-            script.onerror = reject
-        });
-        document.head.appendChild(script)
-        script.remove()
-    }
-    return entry.promise
-}
-importScript.__db = {};
-window['importScript'] = importScript;
+import { Router, dispatchPopStateOnClick } from './router.js'
+import dynamicImport from './dynamic-import.js'
 
-function createRouter(routes) {
-    return function (pathname) {
-        for (const [pattern, handler] of routes) {
-            if (typeof pattern === 'string') {
-                if (pattern !== pathname) continue
-                return handler()
-            }
-            const match = pattern.exec(pathname)
-            if (match === null) continue
-            return handler(...match.slice(1))
-        }
-    }
-}
-
-const pagesCache = new Map()
-async function loadPage(name) {
-    if (pagesCache.has(name))
-        return pagesCache.get(name)
-    const page = await importScript(`/js/pages/${name}-page.js`).then(m => m.default)
-    pagesCache.set(name, page)
-    return page
+const pageFnsCache = new Map()
+async function loadPageFn(name) {
+    if (pageFnsCache.has(name))
+        return pageFnsCache.get(name)
+    const pageFn = await dynamicImport(`/js/pages/${name}-page.js`).then(m => m.default)
+    pageFnsCache.set(name, pageFn)
+    return pageFn
 }
 
 function view(name) {
-    return (...args) => loadPage(name).then(page => page(...args))
+    return (...args) => loadPageFn(name).then(page => page(...args))
 }
 
-const route = createRouter([
-    ['/', view('home')],
-    ['/callback', view('callback')],
-    [/^\//, view('not-found')],
-])
+const router = new Router()
+
+router.handle('/', view('home'))
+router.handle('/callback', view('callback'))
+router.handle(/^\//, view('not-found'))
 
 const pageOutlet = document.getElementById('page-outlet')
+const disconnectEvent = new CustomEvent('disconnect')
+
 let currentPage
+
 async function render() {
     if (currentPage instanceof Node) {
         pageOutlet.innerHTML = ''
+        currentPage.dispatchEvent(disconnectEvent)
     }
-    currentPage = await route(decodeURI(location.pathname))
+    currentPage = await router.exec(location.pathname)
     pageOutlet.appendChild(currentPage)
 }
 render()
 
+addEventListener('click', dispatchPopStateOnClick)
 addEventListener('popstate', render)
-addEventListener('click', hijackClicks)
-
-/**
- * @param {MouseEvent} ev
- */
-function hijackClicks(ev) {
-    if (ev.defaultPrevented
-        || ev.altKey
-        || ev.ctrlKey
-        || ev.metaKey
-        || ev.shiftKey
-        || ev.button !== 0) return
-
-    const a = Array
-        .from(walkParents(ev.target))
-        .find(n => n instanceof HTMLAnchorElement)
-
-    if (!(a instanceof HTMLAnchorElement)
-        || (a.target !== '' && a.target !== '_self')
-        || a.hostname !== location.hostname)
-        return
-
-    ev.stopImmediatePropagation()
-    ev.stopPropagation()
-    ev.preventDefault()
-
-    const { state } = history
-    history.pushState(state, document.title, a.href)
-    dispatchEvent(new PopStateEvent('popstate', { state }))
-}
-
-function* walkParents(node) {
-    do {
-        yield node
-    } while ((node = node.parentNode) instanceof Node)
-}
