@@ -3,21 +3,21 @@ import { getAuthUser } from '../auth.js'
 
 const template = document.createElement('template')
 template.innerHTML = `
-    <h1>Passwordless Demo</h1>
+<h1>Passwordless Demo</h1>
 
-    <div id="authenticated" hidden>
-        <button id="logout-button">Logout</button>
-    </div>
+<div id="authenticated" hidden>
+    <button id="logout-button">Logout</button>
+</div>
 
-    <div id="guest" hidden>
-        <h2>Access</h2>
+<div id="guest" hidden>
+    <h2>Access</h2>
 
-        <form id="access-form">
-            <label for="email-input">Email:</label>
-            <input type="email" id="email-input" placeholder="Email" required>
-            <button type="submit">Send Magic Link</button>
-        </form>
-    </div>
+    <form id="access-form">
+        <label for="email-input">Email:</label>
+        <input type="email" id="email-input" placeholder="Email" required>
+        <button type="submit">Send Magic Link</button>
+    </form>
+</div>
 `
 
 export default function HomePage() {

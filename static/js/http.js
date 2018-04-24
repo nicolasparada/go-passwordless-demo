@@ -51,7 +51,7 @@ function post(url, payload, headers) {
         options.headers['Content-Type'] = 'multipart/form-data'
     } else if (payload instanceof File) {
         options['body'] = payload
-        options.headers['Content-Type'] = payload['type']
+        options.headers['Content-Type'] = payload.type
     } else if (typeof payload === 'object' && payload !== null) {
         options['body'] = JSON.stringify(payload)
         options.headers['Content-Type'] = 'application/json; charset=utf-8'

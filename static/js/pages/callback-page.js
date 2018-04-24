@@ -2,7 +2,7 @@ import http from '../http.js'
 
 const template = document.createElement('template')
 template.innerHTML = `
-    <h1>Authenticating you...</h1>
+<h1>Authenticating you...</h1>
 `
 
 export default function CallbackPage() {
