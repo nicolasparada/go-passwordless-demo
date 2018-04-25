@@ -20,18 +20,17 @@ router.handle('/', view('home'))
 router.handle('/callback', view('callback'))
 router.handle(/^\//, view('not-found'))
 
-const pageOutlet = document.getElementById('page-outlet')
 const disconnectEvent = new CustomEvent('disconnect')
 
 let currentPage
 
 async function render() {
     if (currentPage instanceof Node) {
-        pageOutlet.innerHTML = ''
+        document.body.innerHTML = ''
         currentPage.dispatchEvent(disconnectEvent)
     }
     currentPage = await router.exec(location.pathname)
-    pageOutlet.appendChild(currentPage)
+    document.body.appendChild(currentPage)
 }
 render()
 
