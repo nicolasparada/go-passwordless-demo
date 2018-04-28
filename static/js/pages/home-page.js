@@ -14,7 +14,6 @@ template.innerHTML = `
         <h2>Access</h2>
 
         <form id="access-form">
-            <label for="email-input">Email:</label>
             <input type="email" id="email-input" placeholder="Email" required>
             <button type="submit">Send Magic Link</button>
         </form>

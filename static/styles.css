@@ -1,5 +1,12 @@
 :root {
+    box-sizing: border-box;
     font-family: 'Segoe UI', sans-serif;
+}
+
+*,
+::before,
+::after {
+    box-sizing: inherit;
 }
 
 body {
@@ -10,15 +17,29 @@ h1 {
     font-weight: 300;
 }
 
-nav {
-    height: 3rem;
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
+h2 {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: -1px;
 }
 
-nav a + a {
-    margin-left: 1rem;
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+form > * + * {
+    margin-top: .5rem;
+}
+
+button,
+input {
+    border-radius: 1.5rem;
+    border-style: solid;
+    font: inherit;
+    color: inherit;
+    height: 3rem;
+    padding: 0 1.5rem;
 }
 
 .container {
