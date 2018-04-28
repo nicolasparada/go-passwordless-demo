@@ -71,6 +71,7 @@ func main() {
 	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
 	router.Handle("GET", "/api/auth_user", authRequired(getAuthUser))
 	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
+	router.HandleFunc("GET", "/styles.css", serveFile("static/styles.css"))
 	router.HandleFunc("GET", "/...", serveFile("static/index.html"))
 
 	addr := fmt.Sprintf(":%d", config.port)

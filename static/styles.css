@@ -1,0 +1,28 @@
+:root {
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+    margin: 0;
+}
+
+h1 {
+    font-weight: 300;
+}
+
+nav {
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+nav a + a {
+    margin-left: 1rem;
+}
+
+.container {
+    width: calc(100% - 2rem);
+    max-width: 65ch;
+    margin: 0 auto;
+}

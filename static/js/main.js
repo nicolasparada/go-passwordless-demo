@@ -21,15 +21,17 @@ router.handle('/callback', view('callback'))
 router.handle(/^\//, view('not-found'))
 
 const disconnectEvent = new CustomEvent('disconnect')
-
+const loadingHTML = document.body.innerHTML
 let currentPage
 
 async function render() {
-    if (currentPage instanceof Node) {
-        document.body.innerHTML = ''
+    const rendered = currentPage instanceof Node
+    if (rendered) {
+        document.body.innerHTML = loadingHTML
         currentPage.dispatchEvent(disconnectEvent)
     }
     currentPage = await router.exec(location.pathname)
+    document.body.innerHTML = ''
     document.body.appendChild(currentPage)
 }
 render()
