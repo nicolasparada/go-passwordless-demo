@@ -11,12 +11,12 @@ export default function CallbackPage() {
     const page = template.content.cloneNode(true)
 
     if (typeof jwt === 'string' && isDate(expiresAt)) {
-        fetchAuthUser(jwt).then(stringify).then(authUser => {
+        fetchAuthUser(jwt).then(JSON.stringify).then(authUser => {
             localStorage.setItem('jwt', jwt)
             localStorage.setItem('auth_user', authUser)
             localStorage.setItem('expires_at', expiresAt)
         }).catch(err => {
-            alert(err.message)
+            alert(err.body.message || err.body || err.message)
         }).then(() => {
             location.replace('/')
         })
@@ -48,14 +48,6 @@ function fetchAuthUser(token) {
 function isDate(str) {
     return typeof str === 'string'
         && !isNaN(new Date(str).valueOf())
-}
-
-function stringify(x) {
-    try {
-        return Promise.resolve(JSON.stringify(x))
-    } catch (err) {
-        return Promise.reject(err)
-    }
 }
 
 /**

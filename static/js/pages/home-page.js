@@ -48,14 +48,14 @@ export default function HomePage() {
             if (err.statusCode === 404) {
                 if (confirm("No user found with that email. Do you want to create an account?"))
                     runCreateUserProgram(email)
-            } else if ('email' in err) {
-                emailInput.setCustomValidity(err.email)
+            } else if ('email' in err.body) {
+                emailInput.setCustomValidity(err.body.email)
                 setTimeout(() => {
                     if ('reportValidity' in emailInput)
                         emailInput['reportValidity']()
                 }, 0)
             } else {
-                alert(err.message)
+                alert(err.body.message || err.body || err.message)
             }
         }).then(() => {
             emailInput.disabled = false
@@ -107,13 +107,13 @@ function runCreateUserProgram(email, username) {
         return
 
     createUser(email, username).then(onUserCreated).catch(err => {
-        if ('email' in err) {
-            alert(err.email)
-        } else if ('username' in err) {
-            alert(err.username)
+        if ('email' in err.body) {
+            alert(err.body.email)
+        } else if ('username' in err.body) {
+            alert(err.body.username)
             runCreateUserProgram(email, username)
         } else {
-            alert(err.message)
+            alert(err.body.message || err.body || err.message)
         }
     })
 }

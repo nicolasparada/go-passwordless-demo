@@ -41,9 +41,8 @@ export async function handleResponse(res) {
         headers: res.headers,
         body,
     }
-    if (!res.ok) {
+    if (!res.ok)
         throw Object.assign(new Error(res.statusText), response)
-    }
     return response
 }
 
@@ -51,7 +50,9 @@ export async function handleResponse(res) {
  * @param {Response} res
  */
 async function getBody(res) {
-    const text = await res.text().then(text => text.replace(/[\r?\n]+$/g, ''))
+    const text = await res
+        .text()
+        .then(text => text.replace(/[\r?\n]+$/g, ''))
     try {
         return JSON.parse(text)
     } catch (_) {
