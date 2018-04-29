@@ -1,5 +1,5 @@
-import { Router, dispatchPopStateOnClick } from './router.js'
-import dynamicImport from './dynamic-import.js'
+import dynamicImport from './dynamic-import.js';
+import { Router, dispatchPopStateOnClick } from './router.js';
 
 const pageFnsCache = new Map()
 async function loadPageFn(name) {
@@ -25,8 +25,7 @@ const loadingHTML = document.body.innerHTML
 let currentPage
 
 async function render() {
-    const rendered = currentPage instanceof Node
-    if (rendered) {
+    if (currentPage instanceof Node) {
         document.body.innerHTML = loadingHTML
         currentPage.dispatchEvent(disconnectEvent)
     }
