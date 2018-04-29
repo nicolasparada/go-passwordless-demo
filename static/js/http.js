@@ -50,9 +50,7 @@ export async function handleResponse(res) {
  * @param {Response} res
  */
 async function getBody(res) {
-    const text = await res
-        .text()
-        .then(text => text.replace(/[\r?\n]+$/g, ''))
+    const text = await res.text()
     try {
         return JSON.parse(text)
     } catch (_) {

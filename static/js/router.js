@@ -1,6 +1,6 @@
-export class Router {
+export default class Router {
     constructor() {
-        this.routes = []
+        this.routes = /** @type {Route[]} */ ([])
 
         this.handle = this.handle.bind(this)
         this.exec = this.exec.bind(this)
@@ -8,7 +8,7 @@ export class Router {
 
     /**
      * @param {string|RegExp} pattern
-     * @param {handler} handler
+     * @param {Handler} handler
      */
     handle(pattern, handler) {
         this.routes.push({ pattern, handler })
@@ -16,10 +16,8 @@ export class Router {
 
     /**
      * @param {string} pathname
-     * @returns {Node|Promise<Node>}
      */
     exec(pathname) {
-        pathname = decodeURI(pathname)
         for (const route of this.routes) {
             if (typeof route.pattern === 'string') {
                 if (route.pattern !== pathname) continue
@@ -30,35 +28,40 @@ export class Router {
             return route.handler(...match.slice(1))
         }
     }
-}
 
-/**
- * @param {MouseEvent} ev
- */
-export function dispatchPopStateOnClick(ev) {
-    if (ev.defaultPrevented
-        || ev.altKey
-        || ev.ctrlKey
-        || ev.metaKey
-        || ev.shiftKey
-        || ev.button !== 0) return
+    /**
+     * @param {MouseEvent} ev
+     */
+    static delegateClicks(ev) {
+        if (ev.defaultPrevented
+            || ev.altKey
+            || ev.ctrlKey
+            || ev.metaKey
+            || ev.shiftKey
+            || ev.button !== 0) return
 
-    const a = Array
-        .from(walkParents(ev.target))
-        .find(n => n instanceof HTMLAnchorElement)
+        const a = Array
+            .from(walkParents(ev.target))
+            .find(n => n instanceof HTMLAnchorElement)
 
-    if (!(a instanceof HTMLAnchorElement)
-        || (a.target !== '' && a.target !== '_self')
-        || a.hostname !== location.hostname)
-        return
+        if (!(a instanceof HTMLAnchorElement)
+            || (a.target !== '' && a.target !== '_self')
+            || a.hostname !== location.hostname)
+            return
 
-    ev.stopImmediatePropagation()
-    ev.stopPropagation()
-    ev.preventDefault()
+        ev.preventDefault()
+        Router.updateHistory(a.href)
+    }
 
-    const { state } = history
-    history.pushState(state, document.title, a.href)
-    dispatchEvent(new PopStateEvent('popstate', { state }))
+    /**
+     * @param {string} href
+     * @param {boolean=} redirect
+     */
+    static updateHistory(href, redirect = false) {
+        const { state } = history
+        history[redirect ? 'replaceState' : 'pushState'](state, document.title, href)
+        dispatchEvent(new PopStateEvent('popstate', { state }))
+    }
 }
 
 function* walkParents(node) {
@@ -67,4 +70,10 @@ function* walkParents(node) {
     } while ((node = node.parentNode) instanceof Node)
 }
 
-/** @typedef {function(...string): Node|Promise<Node>} handler */
+/**
+ * @typedef Route
+ * @property {string|RegExp} pattern
+ * @property {Handler} handler
+ */
+
+/** @typedef {function(...string): any} Handler */

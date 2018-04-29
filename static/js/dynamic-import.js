@@ -26,3 +26,12 @@ export default function dynamicImport(src) {
 
     return record.promise
 }
+
+const modulesCache = new Map()
+export async function importModuleWithCache(specifier) {
+    if (modulesCache.has(specifier))
+        return modulesCache.get(specifier)
+    const m = await dynamicImport(specifier)
+    modulesCache.set(specifier, m)
+    return m
+}
