@@ -1,5 +1,5 @@
-import http from '../http.js'
-import { getAuthUser } from '../auth.js'
+import { getAuthUser } from '../auth.js';
+import http from '../http.js';
 
 const template = document.createElement('template')
 template.innerHTML = `
@@ -85,13 +85,12 @@ function logout() {
 
 /**
  * @param {string} email
- * @returns {Promise<void>}
  */
 function sendMagicLink(email) {
     return http.post('/api/passwordless/start', {
         email,
         redirectUri: location.origin + '/callback',
-    })
+    }).then(() => undefined)
 }
 
 function onMagicLinkSent() {
@@ -122,10 +121,9 @@ function runCreateUserProgram(email, username) {
 /**
  * @param {string} email
  * @param {string} username
- * @returns {Promise<User>}
  */
 function createUser(email, username) {
-    return http.post('/api/users', { email, username })
+    return http.post('/api/users', { email, username }).then(res => res.body)
 }
 
 /**

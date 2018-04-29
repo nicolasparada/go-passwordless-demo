@@ -1,4 +1,4 @@
-import http from '../http.js'
+import http from '../http.js';
 
 const template = document.createElement('template')
 template.innerHTML = `
@@ -37,14 +37,17 @@ const expiresAt = f.get('expires_at')
  * @returns {Promise<AuthUser>}
  */
 function fetchAuthUser(token) {
-    return http.get('/api/auth_user', { Authorization: `Bearer ${token}` })
+    return http
+        .get('/api/auth_user', { authorization: `Bearer ${token}` })
+        .then(res => res.body)
 }
 
 /**
  * @param {string} str
  */
 function isDate(str) {
-    return typeof str === 'string' && !isNaN(new Date(str).valueOf())
+    return typeof str === 'string'
+        && !isNaN(new Date(str).valueOf())
 }
 
 function stringify(x) {

@@ -1,77 +1,66 @@
-import { isAuthenticated } from './auth.js'
-
-/**
- * @param {Response} res
- */
-async function handleResponse(res) {
-    const ct = res.headers.get('content-type')
-    const isJSON = typeof ct === 'string' && ct.startsWith('application/json')
-
-    let payload = await res[isJSON ? 'json' : 'text']()
-    if (!isJSON) {
-        try {
-            payload = JSON.parse(payload)
-        } catch (_) {
-            payload = { message: payload }
-        }
-    }
-
-    if (!res.ok) {
-        const err = new Error(res.statusText)
-        err['statusCode'] = res.status
-        Object.assign(err, payload)
-        throw err
-    }
-
-    return payload
-}
+import { isAuthenticated } from './auth.js';
 
 /**
  * @param {string} url
  * @param {{[key: string]: string}=} headers
  */
 function get(url, headers) {
-    return fetch(url, { headers: Object.assign(getDefaultHeaders(), headers) })
-        .then(handleResponse)
+    return fetch(url, {
+        headers: Object.assign(getAuthHeader(), headers),
+    }).then(handleResponse)
 }
 
 /**
  * @param {string} url
- * @param {(FormData|File|{[key: string]: any})=} payload
+ * @param {{[key: string]: any}=} body
  * @param {{[key: string]: string}=} headers
  */
-function post(url, payload, headers) {
-    const options = {
+function post(url, body, headers) {
+    return fetch(url, {
         method: 'POST',
-        headers: getDefaultHeaders(),
-    }
-
-    if (payload instanceof FormData) {
-        options['body'] = payload
-        options.headers['Content-Type'] = 'multipart/form-data'
-    } else if (payload instanceof File) {
-        options['body'] = payload
-        options.headers['Content-Type'] = payload.type
-    } else if (typeof payload === 'object' && payload !== null) {
-        options['body'] = JSON.stringify(payload)
-        options.headers['Content-Type'] = 'application/json; charset=utf-8'
-    }
-
-    if (typeof headers !== 'undefined') {
-        Object.assign(options.headers, headers)
-    }
-
-    return fetch(url, options).then(handleResponse)
+        headers: Object.assign(getAuthHeader(), { 'content-type': 'application/json' }, headers),
+        body: JSON.stringify(body),
+    }).then(handleResponse)
 }
 
-function getDefaultHeaders() {
+function getAuthHeader() {
     return isAuthenticated()
-        ? { Authorization: `Bearer ${localStorage.getItem('jwt')}` }
+        ? { authorization: `Bearer ${localStorage.getItem('jwt')}` }
         : {}
 }
 
+/**
+ * @param {Response} res
+ */
+export async function handleResponse(res) {
+    const body = await getBody(res)
+    const response = {
+        url: res.url,
+        statusCode: res.status,
+        statusText: res.statusText,
+        headers: res.headers,
+        body,
+    }
+    if (!res.ok) {
+        throw Object.assign(new Error(res.statusText), response)
+    }
+    return response
+}
+
+/**
+ * @param {Response} res
+ */
+async function getBody(res) {
+    const text = await res.text().then(text => text.replace(/[\r?\n]+$/g, ''))
+    try {
+        return JSON.parse(text)
+    } catch (_) {
+        return text
+    }
+}
+
+
 export default {
-    handleResponse,
     get,
     post,
 }
