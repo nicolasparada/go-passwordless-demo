@@ -5,7 +5,7 @@ import Router from './router.js';
 function view(name) {
     return (...args) => importModuleWithCache(`/js/pages/${name}-page.js`)
         .then(m => m.default)
-        .then(page => page(...args))
+        .then(h => h(...args))
 }
 
 function guard(fn1, fn2 = view('not-found')) {
