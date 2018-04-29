@@ -30,7 +30,7 @@ async function render() {
         pageOutlet.innerHTML = loadingHTML
         currentPage.dispatchEvent(disconnectEvent)
     }
-    currentPage = await router.exec(location.pathname)
+    currentPage = await router.exec(decodeURI(location.pathname))
     pageOutlet.innerHTML = ''
     pageOutlet.appendChild(currentPage)
 }
