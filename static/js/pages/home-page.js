@@ -1,7 +1,7 @@
 import { getAuthUser } from '../auth.js';
 
 
-export default function HomePage() {
+export default function homePageHandler() {
     const authUser = getAuthUser()
     const template = document.createElement('template')
     template.innerHTML = `

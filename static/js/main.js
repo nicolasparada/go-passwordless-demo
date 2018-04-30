@@ -1,9 +1,9 @@
 import { isAuthenticated } from './auth.js';
-import { importModuleWithCache } from './dynamic-import.js';
+import { importWithCache } from './dynamic-import.js';
 import Router from './router.js';
 
 function view(name) {
-    return (...args) => importModuleWithCache(`/js/pages/${name}-page.js`)
+    return (...args) => importWithCache(`/js/pages/${name}-page.js`)
         .then(m => m.default)
         .then(h => h(...args))
 }

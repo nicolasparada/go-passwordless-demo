@@ -5,6 +5,6 @@ template.innerHTML = `
 </div>
 `
 
-export default function HomePage() {
+export default function notFoundPageHandler() {
     return template.content.cloneNode(true)
 }

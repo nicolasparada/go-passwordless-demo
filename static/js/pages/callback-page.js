@@ -7,39 +7,33 @@ template.innerHTML = `
 </div>
 `
 
-export default function CallbackPage() {
+export default function callbackPageHandler() {
     const page = template.content.cloneNode(true)
 
+    const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
+    const jwt = f.get('jwt')
+    const expiresAt = f.get('expires_at')
+
     if (typeof jwt === 'string' && isDate(expiresAt)) {
-        fetchAuthUser(jwt).then(JSON.stringify).then(authUser => {
-            localStorage.setItem('jwt', jwt)
-            localStorage.setItem('auth_user', authUser)
-            localStorage.setItem('expires_at', expiresAt)
-        }).catch(err => {
-            alert(err.body.message || err.body || err.message)
-        }).then(() => {
-            location.replace('/')
-        })
+        http.get('/api/auth_user', { authorization: `Bearer ${jwt}` })
+            .then(res => res.body)
+            .then(authUser => {
+                localStorage.setItem('jwt', jwt)
+                localStorage.setItem('auth_user', JSON.stringify(authUser))
+                localStorage.setItem('expires_at', expiresAt)
+            })
+            .catch(err => {
+                alert(err.body.message || err.body || err.message)
+            })
+            .then(() => {
+                location.replace('/')
+            })
     } else {
         alert('Invalid URL')
         location.replace('/')
     }
 
     return page
-}
-
-const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
-const jwt = f.get('jwt')
-const expiresAt = f.get('expires_at')
-
-/**
- * @param {string} token
- * @returns {Promise<AuthUser>}
- */
-function fetchAuthUser(token) {
-    return http
-        .get('/api/auth_user', { authorization: `Bearer ${token}` })
-        .then(res => res.body)
 }
 
 /**

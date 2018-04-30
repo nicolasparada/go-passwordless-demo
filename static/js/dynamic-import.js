@@ -28,7 +28,7 @@ export default function dynamicImport(src) {
 }
 
 const modulesCache = new Map()
-export async function importModuleWithCache(specifier) {
+export async function importWithCache(specifier) {
     if (modulesCache.has(specifier))
         return modulesCache.get(specifier)
     const m = await dynamicImport(specifier)

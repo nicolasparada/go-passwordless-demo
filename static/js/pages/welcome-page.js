@@ -14,7 +14,7 @@ template.innerHTML = `
 </div>
 `
 
-export default function WelcomePage() {
+export default function welcomePageHandler() {
     const page = /** @type {DocumentFragment} */ (template.content.cloneNode(true))
 
     const accessForm = /** @type {HTMLFormElement} */ (page.getElementById('access-form'))
@@ -32,9 +32,9 @@ export default function WelcomePage() {
         emailInput.disabled = true
         accessButton.disabled = true
 
-        sendMagicLink(email).then(onMagicLinkSent).catch(err => {
+        sendMagicLink(email).catch(err => {
             if (err.statusCode === 404) {
-                if (confirm("No user found with that email. Do you want to create an account?"))
+                if (wantToCreateAccount())
                     runCreateUserProgram(email)
             } else if ('email' in err.body) {
                 emailInput.setCustomValidity(err.body.email)
@@ -64,11 +64,13 @@ function sendMagicLink(email) {
     return http.post('/api/passwordless/start', {
         email,
         redirectUri: location.origin + '/callback',
-    }).then(() => undefined)
+    }).then(() => {
+        alert('Magic link sent. Go check your email.')
+    })
 }
 
-function onMagicLinkSent() {
-    alert('Magic link sent. Go check your email.')
+function wantToCreateAccount() {
+    return confirm("No user found with that email. Do you want to create an account?")
 }
 
 /**
@@ -80,31 +82,19 @@ function runCreateUserProgram(email, username) {
     if (username === null)
         return
 
-    createUser(email, username).then(onUserCreated).catch(err => {
-        if ('email' in err.body) {
-            alert(err.body.email)
-        } else if ('username' in err.body) {
-            alert(err.body.username)
-            runCreateUserProgram(email, username)
-        } else {
-            alert(err.body.message || err.body || err.message)
-        }
-    })
-}
-
-/**
- * @param {string} email
- * @param {string} username
- */
-function createUser(email, username) {
-    return http.post('/api/users', { email, username }).then(res => res.body)
-}
-
-/**
- * @param {User} user
- */
-function onUserCreated(user) {
-    return sendMagicLink(user.email).then(onMagicLinkSent)
+    http.post('/api/users', { email, username })
+        .then(res => res.body)
+        .then(user => sendMagicLink(user.email))
+        .catch(err => {
+            if ('email' in err.body) {
+                alert(err.body.email)
+            } else if ('username' in err.body) {
+                alert(err.body.username)
+                runCreateUserProgram(email, username)
+            } else {
+                alert(err.body.message || err.body || err.message)
+            }
+        })
 }
 
 /**
