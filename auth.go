@@ -213,7 +213,7 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func authRequired(next http.HandlerFunc) http.HandlerFunc {
+func guard(next http.HandlerFunc) http.HandlerFunc {
 	return withAuth(func(w http.ResponseWriter, r *http.Request) {
 		_, ok := r.Context().Value(keyAuthUserID).(string)
 		if !ok {

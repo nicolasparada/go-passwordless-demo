@@ -69,7 +69,7 @@ func main() {
 	router.HandleFunc("POST", "/api/users", jsonRequired(createUser))
 	router.HandleFunc("POST", "/api/passwordless/start", jsonRequired(passwordlessStart))
 	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
-	router.Handle("GET", "/api/auth_user", authRequired(getAuthUser))
+	router.Handle("GET", "/api/auth_user", guard(getAuthUser))
 	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
 	router.HandleFunc("GET", "/styles.css", serveFile("static/styles.css"))
 	router.HandleFunc("GET", "/...", serveFile("static/index.html"))
