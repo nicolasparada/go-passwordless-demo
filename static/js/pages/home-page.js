@@ -1,5 +1,5 @@
 import { getAuthUser } from '../auth.js';
-
+import http from '../http.js';
 
 export default function homePageHandler() {
     const authUser = getAuthUser()
@@ -16,12 +16,21 @@ export default function homePageHandler() {
     const page = template.content
     const logoutButton = /** @type {HTMLButtonElement} */ (page.getElementById('logout-button'))
 
-    logoutButton.addEventListener('click', logout)
+    /**
+     * @param {MouseEvent} ev
+     */
+    const onLogoutButtonClick = ev => {
+        logoutButton.disabled = true
+        http.post("/api/logout").then(() => {
+            localStorage.clear()
+            location.reload()
+        }).catch(err => {
+            alert(err.body.message || err.body || err.message)
+            logoutButton.disabled = false
+        })
+    }
+
+    logoutButton.addEventListener('click', onLogoutButtonClick)
 
     return page
-}
-
-function logout() {
-    localStorage.clear()
-    location.reload()
 }

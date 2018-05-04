@@ -31,6 +31,12 @@ const (
 var (
 	rxUUID        = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 	magicLinkTmpl = template.Must(template.ParseFiles("templates/magic-link.html"))
+	logoutCookie  = http.Cookie{
+		Name:     "jwt",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	}
 )
 
 func passwordlessStart(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +157,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect to callback URL
+	// Create callback URL
 	expiresAtB, err := expiresAt.MarshalText()
 	if err != nil {
 		respondInternalError(w, fmt.Errorf("could not marshal expiration date: %v", err))
@@ -162,6 +168,17 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	f.Set("expires_at", string(expiresAtB))
 	callback.Fragment = f.Encode()
 
+	// Create JWT cookie
+	cookie := http.Cookie{
+		Name:     "jwt",
+		Value:    tokenString,
+		Expires:  expiresAt,
+		Path:     "/",
+		HttpOnly: true,
+	}
+
+	// Set cookie and redirect
+	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, callback.String(), http.StatusFound)
 }
 
@@ -181,17 +198,24 @@ func getAuthUser(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, user, http.StatusOK)
 }
 
+func logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &logoutCookie)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func jwtKeyFunc(*jwt.Token) (interface{}, error) { return config.jwtKey, nil }
 
 func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		a := r.Header.Get("Authorization")
-		hasToken := strings.HasPrefix(a, "Bearer ")
-		if !hasToken {
+		var tokenString string
+		if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
+			tokenString = a[7:]
+		} else if c, err := r.Cookie("jwt"); err == nil {
+			tokenString = c.Value
+		} else {
 			next(w, r)
 			return
 		}
-		tokenString := a[7:]
 
 		p := jwt.Parser{ValidMethods: []string{jwt.SigningMethodHS256.Name}}
 		token, err := p.ParseWithClaims(tokenString, &jwt.StandardClaims{}, jwtKeyFunc)
