@@ -14,23 +14,23 @@ export default function homePageHandler() {
     `
 
     const page = template.content
-    const logoutButton = /** @type {HTMLButtonElement} */ (page.getElementById('logout-button'))
-
-    /**
-     * @param {MouseEvent} ev
-     */
-    const onLogoutButtonClick = ev => {
-        logoutButton.disabled = true
-        http.post("/api/logout").then(() => {
-            localStorage.clear()
-            location.reload()
-        }).catch(err => {
-            alert(err.body.message || err.body || err.message)
-            logoutButton.disabled = false
-        })
-    }
-
-    logoutButton.addEventListener('click', onLogoutButtonClick)
+    page.getElementById('logout-button')
+        .addEventListener('click', onLogoutButtonClick)
 
     return page
+}
+
+/**
+ * @param {MouseEvent} ev
+ */
+function onLogoutButtonClick(ev) {
+    const button = /** @type {HTMLButtonElement} */ (ev.currentTarget)
+    button.disabled = true
+    http.post("/api/logout").then(() => {
+        localStorage.clear()
+        location.reload()
+    }).catch(err => {
+        alert(err.body.message || err.body || err.message)
+        button.disabled = false
+    })
 }

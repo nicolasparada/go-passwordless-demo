@@ -8,7 +8,7 @@ template.innerHTML = `
     <h2>Access</h2>
 
     <form id="access-form">
-        <input type="email" id="email-input" placeholder="Email" required>
+        <input type="email" id="email-input" name="email" placeholder="Email" required>
         <button type="submit">Send Magic Link</button>
     </form>
 </div>
@@ -17,44 +17,46 @@ template.innerHTML = `
 export default function welcomePageHandler() {
     const page = /** @type {DocumentFragment} */ (template.content.cloneNode(true))
 
-    const accessForm = /** @type {HTMLFormElement} */ (page.getElementById('access-form'))
-    const emailInput = /** @type {HTMLInputElement} */ (page.getElementById('email-input'))
-    const accessButton = /** @type {HTMLButtonElement} */ (accessForm.querySelector('[type=submit]'))
+    page.getElementById('access-form')
+        .addEventListener('submit', onAccessFormSubmit)
 
-    /**
-     * @param {Event} ev
-     */
-    const onAccessFormSubmit = ev => {
-        ev.preventDefault()
-
-        const email = emailInput.value
-
-        emailInput.disabled = true
-        accessButton.disabled = true
-
-        sendMagicLink(email).catch(err => {
-            if (err.statusCode === 404) {
-                if (wantToCreateAccount())
-                    runCreateUserProgram(email)
-            } else if ('email' in err.body) {
-                emailInput.setCustomValidity(err.body.email)
-                setTimeout(() => {
-                    if ('reportValidity' in emailInput)
-                        emailInput['reportValidity']()
-                }, 0)
-            } else {
-                alert(err.body.message || err.body || err.message)
-            }
-        }).then(() => {
-            emailInput.disabled = false
-            accessButton.disabled = false
-        })
-    }
-
-    accessForm.addEventListener('submit', onAccessFormSubmit)
-    emailInput.addEventListener('input', cleanInputError)
+    page.getElementById('email-input')
+        .addEventListener('input', cleanInputError)
 
     return page
+}
+
+/**
+ * @param {Event} ev
+ */
+function onAccessFormSubmit(ev) {
+    ev.preventDefault()
+
+    const form = /** @type {HTMLFormElement} */ (ev.currentTarget)
+    const input = /** @type {HTMLInputElement} */ (form['email'])
+    const button = /** @type {HTMLButtonElement} */ (form.querySelector('[type=submit]'))
+
+    const email = input.value
+
+    input.disabled = true
+    button.disabled = true
+    sendMagicLink(email).catch(err => {
+        if (err.statusCode === 404) {
+            if (wantToCreateAccount())
+                runCreateUserProgram(email)
+        } else if ('email' in err.body) {
+            input.setCustomValidity(err.body.email)
+            setTimeout(() => {
+                if ('reportValidity' in input)
+                    input['reportValidity']()
+            }, 0)
+        } else {
+            alert(err.body.message || err.body || err.message)
+        }
+    }).then(() => {
+        input.disabled = false
+        button.disabled = false
+    })
 }
 
 /**
