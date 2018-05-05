@@ -35,7 +35,7 @@ function getAuthHeader() {
  * @param {Response} res
  */
 export async function handleResponse(res) {
-    const body = await getBody(res)
+    const body = await res.clone().json().catch(() => res.text())
     const response = {
         url: res.url,
         statusCode: res.status,
@@ -47,19 +47,6 @@ export async function handleResponse(res) {
         throw Object.assign(new Error(res.statusText), response)
     return response
 }
-
-/**
- * @param {Response} res
- */
-async function getBody(res) {
-    const text = await res.text()
-    try {
-        return JSON.parse(text)
-    } catch (_) {
-        return text
-    }
-}
-
 
 export default {
     get,
