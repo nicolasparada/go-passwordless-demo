@@ -65,23 +65,17 @@ func main() {
 		log.Fatalf("could not ping to database: %v\n", err)
 	}
 
-	serveIndex := serveFile("static/index.html")
-	serveHome := withPreload("/js/pages/home-page.js")(serveIndex)
-	serveWelcome := withPreload("/js/pages/welcome-page.js")(serveIndex)
-	serveCallback := withPreload("/js/pages/callback-page.js")(serveIndex)
-	serveNotFound := withPreload("/js/pages/not-found-page.js")(serveIndex)
-
 	router := way.NewRouter()
 	router.HandleFunc("POST", "/api/users", jsonRequired(createUser))
 	router.HandleFunc("POST", "/api/passwordless/start", jsonRequired(passwordlessStart))
 	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
-	router.Handle("GET", "/api/auth_user", guard(getAuthUser))
+	router.HandleFunc("GET", "/api/auth_user", guard(getAuthUser))
 	router.HandleFunc("POST", "/api/logout", logout)
 	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
 	router.HandleFunc("GET", "/styles.css", serveFile("static/styles.css"))
-	router.HandleFunc("GET", "/", authOrGuest(serveHome, serveWelcome))
-	router.HandleFunc("GET", "/callback", serveCallback)
-	router.HandleFunc("GET", "/...", serveNotFound)
+	router.HandleFunc("GET", "/", authOrGuest(servePage("home"), servePage("welcome")))
+	router.HandleFunc("GET", "/callback", servePage("callback"))
+	router.HandleFunc("GET", "/...", servePage("not-found"))
 
 	addr := fmt.Sprintf(":%d", config.port)
 	log.Printf("starting server at %s 🚀\n", config.appURL)
@@ -158,12 +152,6 @@ func withRecover(next http.Handler) http.Handler {
 	})
 }
 
-func serveFile(name string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, name)
-	}
-}
-
 func sendMail(to mail.Address, subject, body string) error {
 	from := mail.Address{
 		Name:    "Passwordless Demo",
@@ -191,19 +179,21 @@ func sendMail(to mail.Address, subject, body string) error {
 		[]byte(msg))
 }
 
-func withPreload(specifiers ...string) func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			h := w.Header()
-			h.Add("Link", "</js/main.js>; rel=modulepreload; as=script; nopush")
-			h.Add("Link", "</js/auth.js>; rel=modulepreload; as=script; nopush")
-			h.Add("Link", "</js/dynamic-import.js>; rel=modulepreload; as=script; nopush")
-			h.Add("Link", "</js/router.js>; rel=modulepreload; as=script; nopush")
-			for _, s := range specifiers {
-				h.Add("Link", fmt.Sprintf("<%s>; rel=modulepreload; as=script; nopush", s))
-			}
-			next(w, r)
-		}
+func serveFile(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, name)
+	}
+}
+
+func servePage(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Add("Link", "</js/main.js>; rel=modulepreload; as=script; nopush")
+		h.Add("Link", "</js/auth.js>; rel=modulepreload; as=script; nopush")
+		h.Add("Link", "</js/dynamic-import.js>; rel=modulepreload; as=script; nopush")
+		h.Add("Link", "</js/router.js>; rel=modulepreload; as=script; nopush")
+		h.Add("Link", fmt.Sprintf("</js/pages/%s-page.js>; rel=modulepreload; as=script; nopush", name))
+		http.ServeFile(w, r, "static/index.html")
 	}
 }
 
