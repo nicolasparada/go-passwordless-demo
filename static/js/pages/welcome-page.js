@@ -51,7 +51,7 @@ function onAccessFormSubmit(ev) {
                     input['reportValidity']()
             }, 0)
         } else {
-            alert(err.body.message || err.body || err.message)
+            alert(err.message)
         }
     }).then(() => {
         input.disabled = false
@@ -94,7 +94,7 @@ function runCreateUserProgram(email, username) {
                 alert(err.body.username)
                 runCreateUserProgram(email, username)
             } else {
-                alert(err.body.message || err.body || err.message)
+                alert(err.message)
             }
         })
 }

@@ -44,7 +44,13 @@ export async function handleResponse(res) {
         body,
     }
     if (!res.ok)
-        throw Object.assign(new Error(res.statusText), response)
+        throw Object.assign(new Error(
+            typeof body === 'object' && body !== null && 'message' in body
+                ? body['message']
+                : typeof body === 'string' && body !== ''
+                    ? body
+                    : res.statusText
+        ), response)
     return response
 }
 

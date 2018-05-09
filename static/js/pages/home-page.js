@@ -30,7 +30,7 @@ function onLogoutButtonClick(ev) {
         localStorage.clear()
         location.reload()
     }).catch(err => {
-        alert(err.body.message || err.body || err.message)
+        alert(err.message)
         button.disabled = false
     })
 }

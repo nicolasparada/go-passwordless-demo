@@ -23,7 +23,7 @@ export default function callbackPageHandler() {
                 localStorage.setItem('expires_at', expiresAt)
             })
             .catch(err => {
-                alert(err.body.message || err.body || err.message)
+                alert(err.message)
             })
             .then(() => {
                 location.replace('/')
