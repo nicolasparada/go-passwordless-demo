@@ -43,14 +43,10 @@ export async function handleResponse(res) {
         headers: res.headers,
         body,
     }
-    if (!res.ok)
-        throw Object.assign(new Error(
-            typeof body === 'object' && body !== null && 'message' in body
-                ? body['message']
-                : typeof body === 'string' && body !== ''
-                    ? body
-                    : res.statusText
-        ), response)
+    if (!res.ok) throw Object.assign(
+        new Error(body.message || body || res.statusText),
+        response
+    )
     return response
 }
 
