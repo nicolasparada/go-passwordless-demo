@@ -21,6 +21,7 @@ export default class Router {
         for (const route of this.routes) {
             if (typeof route.pattern === 'string') {
                 if (route.pattern !== pathname) continue
+                // @ts-ignore
                 return route.handler()
             }
             const match = route.pattern.exec(pathname)
@@ -38,11 +39,13 @@ export default class Router {
             || ev.ctrlKey
             || ev.metaKey
             || ev.shiftKey
-            || ev.button !== 0) return
+            || ev.button !== 0)
+            return
 
-        const a = Array
-            .from(walkParents(ev.target))
-            .find(n => n instanceof HTMLAnchorElement)
+        let a
+        for (a = ev.target; a instanceof Node; a = a.parentNode)
+            if (a instanceof HTMLAnchorElement)
+                break
 
         if (!(a instanceof HTMLAnchorElement)
             || (a.target !== '' && a.target !== '_self')
