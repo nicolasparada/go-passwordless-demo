@@ -42,12 +42,9 @@ export default class Router {
             || ev.button !== 0)
             return
 
-        let a
-        for (a = ev.target; a instanceof Node; a = a.parentNode)
-            if (a instanceof HTMLAnchorElement)
-                break
+        const a = /** @type {Element} */ (ev.target).closest('a')
 
-        if (!(a instanceof HTMLAnchorElement)
+        if (a === null
             || (a.target !== '' && a.target !== '_self')
             || a.hostname !== location.hostname)
             return

@@ -2,6 +2,21 @@ import { isAuthenticated } from './auth.js';
 import { importWithCache } from './dynamic-import.js';
 import Router from './router.js';
 
+const router = new Router()
+const disconnectEvent = new CustomEvent('disconnect')
+const pageOutlet = document.body
+const loadingHTML = pageOutlet.innerHTML
+let currentPage
+
+router.handle('/', guard(view('home'), view('welcome')))
+router.handle('/callback', view('callback'))
+router.handle(/^\//, view('not-found'))
+
+render()
+addEventListener('click', Router.delegateClicks)
+addEventListener('popstate', render)
+
+
 function view(name) {
     return (...args) => importWithCache(`/js/pages/${name}-page.js`)
         .then(m => m.default)
@@ -14,17 +29,6 @@ function guard(fn1, fn2 = view('not-found')) {
         : fn2(...args)
 }
 
-const router = new Router()
-
-router.handle('/', guard(view('home'), view('welcome')))
-router.handle('/callback', view('callback'))
-router.handle(/^\//, view('not-found'))
-
-const disconnectEvent = new CustomEvent('disconnect')
-const pageOutlet = document.body
-const loadingHTML = pageOutlet.innerHTML
-let currentPage
-
 async function render() {
     if (currentPage instanceof Node) {
         pageOutlet.innerHTML = loadingHTML
@@ -34,7 +38,3 @@ async function render() {
     pageOutlet.innerHTML = ''
     pageOutlet.appendChild(currentPage)
 }
-
-render()
-addEventListener('click', Router.delegateClicks)
-addEventListener('popstate', render)
