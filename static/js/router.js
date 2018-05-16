@@ -35,11 +35,11 @@ export default class Router {
      */
     static delegateClicks(ev) {
         if (ev.defaultPrevented
-            || ev.altKey
+            || ev.button !== 0
             || ev.ctrlKey
-            || ev.metaKey
             || ev.shiftKey
-            || ev.button !== 0)
+            || ev.altKey
+            || ev.metaKey)
             return
 
         const a = /** @type {Element} */ (ev.target).closest('a')
