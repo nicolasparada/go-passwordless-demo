@@ -1,12 +1,11 @@
 export default class Router {
     constructor() {
         this.routes = /** @type {Route[]} */ ([])
-
-        this.handle = this.handle.bind(this)
-        this.exec = this.exec.bind(this)
     }
 
     /**
+     * Adds a route handler.
+     *
      * @param {string|RegExp} pattern
      * @param {Handler} handler
      */
@@ -15,6 +14,8 @@ export default class Router {
     }
 
     /**
+     * Executes the handler for the given pathname.
+     *
      * @param {string} pathname
      */
     exec(pathname) {
@@ -31,43 +32,46 @@ export default class Router {
     }
 
     /**
-     * @param {MouseEvent} ev
+     * Register a callback for every time an anchor link is clicked or a "popstate" event accurs.
+     * It's also called initialy too.
+     *
+     * @param {function} callback
      */
-    static delegateClicks(ev) {
-        if (ev.defaultPrevented
-            || ev.button !== 0
-            || ev.ctrlKey
-            || ev.shiftKey
-            || ev.altKey
-            || ev.metaKey)
-            return
+    install(callback) {
+        const execCallback = () => {
+            callback(this.exec(decodeURI(location.pathname)))
+        }
 
-        const a = /** @type {Element} */ (ev.target).closest('a')
+        document.body.addEventListener('click', ev => {
+            if (ev.defaultPrevented
+                || ev.button !== 0
+                || ev.ctrlKey
+                || ev.shiftKey
+                || ev.altKey
+                || ev.metaKey) {
+                return
+            }
 
-        if (a === null
-            || (a.target !== '' && a.target !== '_self')
-            || a.hostname !== location.hostname)
-            return
+            const a = /** @type {Element} */ (ev.target).closest('a')
 
-        ev.preventDefault()
-        Router.updateHistory(a.href)
+            if (a === null
+                || (a.target !== '' && a.target !== '_self')
+                || a.hostname !== location.hostname) {
+                return
+            }
+
+            ev.preventDefault()
+
+            if (a.href !== location.href) {
+                history.pushState(history.state, document.title, a.href)
+                execCallback()
+            }
+        })
+
+        addEventListener('popstate', execCallback)
+
+        execCallback()
     }
-
-    /**
-     * @param {string} href
-     * @param {boolean=} redirect
-     */
-    static updateHistory(href, redirect = false) {
-        const { state } = history
-        history[redirect ? 'replaceState' : 'pushState'](state, document.title, href)
-        dispatchEvent(new PopStateEvent('popstate', { state }))
-    }
-}
-
-function* walkParents(node) {
-    do {
-        yield node
-    } while ((node = node.parentNode) instanceof Node)
 }
 
 /**

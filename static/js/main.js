@@ -3,18 +3,15 @@ import { importWithCache } from './dynamic-import.js';
 import Router from './router.js';
 
 const router = new Router()
-const disconnectEvent = new CustomEvent('disconnect')
-const pageOutlet = document.body
-const loadingHTML = pageOutlet.innerHTML
-let currentPage
 
 router.handle('/', guard(view('home'), view('welcome')))
 router.handle('/callback', view('callback'))
 router.handle(/^\//, view('not-found'))
 
-render()
-addEventListener('click', Router.delegateClicks)
-addEventListener('popstate', render)
+router.install(async resultPromise => {
+    document.body.innerHTML = ''
+    document.body.appendChild(await resultPromise)
+})
 
 
 function view(name) {
@@ -27,14 +24,4 @@ function guard(fn1, fn2 = view('not-found')) {
     return (...args) => isAuthenticated()
         ? fn1(...args)
         : fn2(...args)
-}
-
-async function render() {
-    if (currentPage instanceof Node) {
-        pageOutlet.innerHTML = loadingHTML
-        currentPage.dispatchEvent(disconnectEvent)
-    }
-    currentPage = await router.exec(decodeURI(location.pathname))
-    pageOutlet.innerHTML = ''
-    pageOutlet.appendChild(currentPage)
 }

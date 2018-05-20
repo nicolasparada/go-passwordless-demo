@@ -13,6 +13,15 @@ body {
     margin: 0;
 }
 
+body:empty {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+body:empty::after {
+    content: 'Loading... please wait.';
+}
+
 h1 {
     font-weight: 300;
 }
