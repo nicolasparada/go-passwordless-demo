@@ -2,15 +2,18 @@ import http from '../http.js';
 
 const template = document.createElement('template')
 template.innerHTML = `
-<div class="container">
-    <h1>Authenticating you...</h1>
-</div>
+    <div class="container">
+        <h1>Authenticating you...</h1>
+    </div>
 `
 
-export default function callbackPageHandler() {
+export default function callbackPage() {
     const page = template.content.cloneNode(true)
 
-    const f = new URLSearchParams(decodeURIComponent(location.hash.substr(1)))
+    const f = new URLSearchParams(location.hash.substr(1))
+    for (const [k, v] of f.entries()) {
+        f.set(decodeURIComponent(k), decodeURIComponent(v))
+    }
     const jwt = f.get('jwt')
     const expiresAt = f.get('expires_at')
 
@@ -40,13 +43,5 @@ export default function callbackPageHandler() {
  * @param {string} str
  */
 function isDate(str) {
-    return typeof str === 'string'
-        && !isNaN(new Date(str).valueOf())
+    return typeof str === 'string' && !isNaN(new Date(str).valueOf())
 }
-
-/**
- * @typedef AuthUser
- * @property {string} id
- * @property {string} username
- * @property {string} email
- */

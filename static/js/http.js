@@ -7,7 +7,6 @@ import { isAuthenticated } from './auth.js';
 function get(url, headers) {
     return fetch(url, {
         headers: Object.assign(getAuthHeader(), headers),
-        credentials: 'include',
     }).then(handleResponse)
 }
 
@@ -21,7 +20,6 @@ function post(url, body, headers) {
         method: 'POST',
         headers: Object.assign(getAuthHeader(), { 'content-type': 'application/json' }, headers),
         body: JSON.stringify(body),
-        credentials: 'include',
     }).then(handleResponse)
 }
 

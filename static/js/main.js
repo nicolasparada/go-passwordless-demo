@@ -1,4 +1,4 @@
-import Router from 'https://unpkg.com/@nicolasparada/router@0.1.1/router.js';
+import Router from 'https://unpkg.com/@nicolasparada/router@0.5.0/router.js';
 import { isAuthenticated } from './auth.js';
 import { importWithCache } from './dynamic-import.js';
 

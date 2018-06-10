@@ -2,19 +2,19 @@ import http from '../http.js';
 
 const template = document.createElement('template')
 template.innerHTML = `
-<div class="container">
-    <h1>Passwordless Demo</h1>
+    <div class="container">
+        <h1>Passwordless Demo</h1>
 
-    <h2>Access</h2>
+        <h2>Access</h2>
 
-    <form id="access-form">
-        <input type="email" id="email-input" name="email" placeholder="Email" required>
-        <button type="submit">Send Magic Link</button>
-    </form>
-</div>
+        <form id="access-form">
+            <input type="email" id="email-input" name="email" placeholder="Email" autofocus required>
+            <button>Send Magic Link</button>
+        </form>
+    </div>
 `
 
-export default function welcomePageHandler() {
+export default function welcomePage() {
     const page = /** @type {DocumentFragment} */ (template.content.cloneNode(true))
 
     page.getElementById('access-form')
@@ -33,29 +33,31 @@ function onAccessFormSubmit(ev) {
     ev.preventDefault()
 
     const form = /** @type {HTMLFormElement} */ (ev.currentTarget)
-    const input = /** @type {HTMLInputElement} */ (form['email'])
-    const button = /** @type {HTMLButtonElement} */ (form.querySelector('[type=submit]'))
+    const input = form.querySelector('input')
+    const submitButton = form.querySelector('button')
 
     const email = input.value
 
     input.disabled = true
-    button.disabled = true
+    submitButton.disabled = true
     sendMagicLink(email).catch(err => {
         if (err.statusCode === 404) {
-            if (wantToCreateAccount())
+            if (wantToCreateAccount()) {
                 runCreateUserProgram(email)
-        } else if ('email' in err.body) {
-            input.setCustomValidity(err.body.email)
+            }
+        } else if (err.body.errors && 'email' in err.body.errors) {
+            input.setCustomValidity(err.body.errors.email)
             setTimeout(() => {
-                if ('reportValidity' in input)
+                if ('reportValidity' in input) {
                     input['reportValidity']()
+                }
             }, 0)
         } else {
             alert(err.message)
         }
     }).then(() => {
         input.disabled = false
-        button.disabled = false
+        submitButton.disabled = false
     })
 }
 
@@ -81,8 +83,9 @@ function wantToCreateAccount() {
  */
 function runCreateUserProgram(email, username) {
     username = prompt("Enter username", username)
-    if (username === null)
+    if (username === null) {
         return
+    }
 
     http.post('/api/users', { email, username })
         .then(res => res.body)

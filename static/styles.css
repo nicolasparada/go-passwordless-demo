@@ -1,6 +1,7 @@
 :root {
     box-sizing: border-box;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: sans-serif;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
 *,
@@ -13,46 +14,37 @@ body {
     margin: 0;
 }
 
+.container {
+    width: calc(100% - 2rem);
+    max-width: 65ch;
+    margin: 0 auto;
+}
+
+button,
+input {
+    color: inherit;
+    font: inherit;
+}
+
+button {
+    touch-action: manipulation;
+    user-select: none;
+}
+
+a {
+    color: #4768fd;
+}
+
+[disabled] {
+    opacity: .7;
+    pointer-events: none;
+}
+
 body:empty {
-    margin-top: 1rem;
+    padding-top: 2rem;
     text-align: center;
 }
 
 body:empty::after {
     content: 'Loading... please wait.';
-}
-
-h1 {
-    font-weight: 300;
-}
-
-h2 {
-    text-transform: uppercase;
-    font-weight: 700;
-    letter-spacing: -1px;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-}
-
-form > * + * {
-    margin-top: .5rem;
-}
-
-button,
-input {
-    border-radius: 1.5rem;
-    border-style: solid;
-    font: inherit;
-    color: inherit;
-    height: 3rem;
-    padding: 0 1.5rem;
-}
-
-.container {
-    width: calc(100% - 2rem);
-    max-width: 65ch;
-    margin: 0 auto;
 }
