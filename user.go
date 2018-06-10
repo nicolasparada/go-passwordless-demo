@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/lib/pq"
@@ -17,11 +16,6 @@ type User struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 }
-
-var (
-	rxEmail    = regexp.MustCompile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
-	rxUsername = regexp.MustCompile("^[a-zA-Z][\\w|-]{0,17}$")
-)
 
 func createUser(w http.ResponseWriter, r *http.Request) {
 	// Request parsing
@@ -48,7 +42,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		errs["username"] = "Invalid username"
 	}
 	if len(errs) != 0 {
-		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		respondJSON(w, Errors{errs}, http.StatusUnprocessableEntity)
 		return
 	}
 

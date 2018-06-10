@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/mail"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,27 +16,17 @@ import (
 	"github.com/lib/pq"
 )
 
-// PasswordlessStartRequest holds the JSON request body.
-type PasswordlessStartRequest struct {
-	Email       string `json:"email"`
-	RedirectURI string `json:"redirectUri"`
-}
-
 var (
 	keyAuthUserID = ContextKey{"auth_user_id"}
-	rxUUID        = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 	magicLinkTmpl = template.Must(template.ParseFiles("templates/magic-link.html"))
-	logoutCookie  = http.Cookie{
-		Name:     "jwt",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-	}
 )
 
 func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	// Request parsing
-	var input PasswordlessStartRequest
+	var input struct {
+		Email       string `json:"email"`
+		RedirectURI string `json:"redirectUri"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		respondJSON(w, err.Error(), http.StatusBadRequest)
 		return
@@ -57,11 +45,11 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 		errs["redirectUri"] = "Invalid redirect URI"
 	}
 	if len(errs) != 0 {
-		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		respondJSON(w, Errors{errs}, http.StatusUnprocessableEntity)
 		return
 	}
 
-	// Insert verification code
+	// Verification code
 	var verificationCode string
 	err := db.QueryRowContext(r.Context(), `
 		INSERT INTO verification_codes (user_id) VALUES
@@ -76,40 +64,37 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create magic link
+	// Magic link
 	q := make(url.Values)
 	q.Set("verification_code", verificationCode)
 	q.Set("redirect_uri", input.RedirectURI)
-	magicLink := *config.appURL
+	magicLink := config.domain
 	magicLink.Path = "/api/passwordless/verify_redirect"
 	magicLink.RawQuery = q.Encode()
 
-	// Creating mail
+	// Mailing
 	var body bytes.Buffer
 	data := map[string]string{"MagicLink": magicLink.String()}
 	if err := magicLinkTmpl.Execute(&body, data); err != nil {
 		respondInternalError(w, fmt.Errorf("could not execute magic link template: %v", err))
 		return
 	}
-
-	// Sending mail
-	to := mail.Address{Address: input.Email}
-	if err := sendMail(to, "Magic Link", body.String()); err != nil {
+	if err := sendMail(input.Email, "Magic Link", body.String()); err != nil {
 		respondInternalError(w, fmt.Errorf("could not mail magic link: %v", err))
 		return
 	}
 
-	// Respond OK
+	// Respond
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
-	// Parse request input
+	// Request parsing
 	q := r.URL.Query()
 	verificationCode := q.Get("verification_code")
 	redirectURI := q.Get("redirect_uri")
 
-	// Validate input
+	// Input validation
 	errs := make(map[string]string)
 	if verificationCode == "" {
 		errs["verification_code"] = "Verification code required"
@@ -124,11 +109,11 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		errs["redirect_uri"] = "Invalid redirect URI"
 	}
 	if len(errs) != 0 {
-		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		respondJSON(w, Errors{errs}, http.StatusUnprocessableEntity)
 		return
 	}
 
-	// Delete verification code
+	// Verification code
 	var userID string
 	if err := db.QueryRowContext(r.Context(), `
 		DELETE FROM verification_codes
@@ -143,7 +128,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create JWT
+	// JWT
 	expiresAt := time.Now().Add(time.Hour * 24 * 60) // 60 days
 	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Subject:   userID,
@@ -154,7 +139,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create callback URL
+	// Callback
 	expiresAtB, err := expiresAt.MarshalText()
 	if err != nil {
 		respondInternalError(w, fmt.Errorf("could not marshal expiration date: %v", err))
@@ -165,17 +150,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	f.Set("expires_at", string(expiresAtB))
 	callback.Fragment = f.Encode()
 
-	// Create JWT cookie
-	cookie := http.Cookie{
-		Name:     "jwt",
-		Value:    tokenString,
-		Expires:  expiresAt,
-		Path:     "/",
-		HttpOnly: true,
-	}
-
-	// Set cookie and redirect
-	http.SetCookie(w, &cookie)
+	// Redirect
 	http.Redirect(w, r, callback.String(), http.StatusFound)
 }
 
@@ -195,27 +170,18 @@ func getAuthUser(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, user, http.StatusOK)
 }
 
-func logout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &logoutCookie)
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func jwtKeyFunc(*jwt.Token) (interface{}, error) { return config.jwtKey, nil }
-
 func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var tokenString string
 		if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
 			tokenString = a[7:]
-		} else if c, err := r.Cookie("jwt"); err == nil {
-			tokenString = c.Value
 		} else {
 			next(w, r)
 			return
 		}
 
 		p := jwt.Parser{ValidMethods: []string{jwt.SigningMethodHS256.Name}}
-		token, err := p.ParseWithClaims(tokenString, &jwt.StandardClaims{}, jwtKeyFunc)
+		token, err := p.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(*jwt.Token) (interface{}, error) { return config.jwtKey, nil })
 		if err != nil {
 			respondJSON(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
