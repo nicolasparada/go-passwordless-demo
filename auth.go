@@ -24,11 +24,8 @@ type PasswordlessStartRequest struct {
 	RedirectURI string `json:"redirectUri"`
 }
 
-const (
-	keyAuthUserID ContextKey = iota
-)
-
 var (
+	keyAuthUserID = ContextKey{"auth_user_id"}
 	rxUUID        = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 	magicLinkTmpl = template.Must(template.ParseFiles("templates/magic-link.html"))
 	logoutCookie  = http.Cookie{
@@ -237,13 +234,16 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func guard(next http.HandlerFunc) http.HandlerFunc {
+func guard(handler, fallback http.HandlerFunc) http.HandlerFunc {
 	return withAuth(func(w http.ResponseWriter, r *http.Request) {
-		_, ok := r.Context().Value(keyAuthUserID).(string)
-		if !ok {
-			respondJSON(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		if _, ok := r.Context().Value(keyAuthUserID).(string); !ok {
+			if fallback != nil {
+				fallback(w, r)
+			} else {
+				respondJSON(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			}
 			return
 		}
-		next(w, r)
+		handler(w, r)
 	})
 }

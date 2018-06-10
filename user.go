@@ -18,12 +18,6 @@ type User struct {
 	Username string `json:"username"`
 }
 
-// CreateUserRequest holds the JSON request body.
-type CreateUserRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-}
-
 var (
 	rxEmail    = regexp.MustCompile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
 	rxUsername = regexp.MustCompile("^[a-zA-Z][\\w|-]{0,17}$")
@@ -31,7 +25,10 @@ var (
 
 func createUser(w http.ResponseWriter, r *http.Request) {
 	// Request parsing
-	var input CreateUserRequest
+	var input struct {
+		Email    string `json:"email"`
+		Username string `json:"username"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		respondJSON(w, err.Error(), http.StatusBadRequest)
 		return
@@ -81,9 +78,13 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchUser(ctx context.Context, id string) (User, error) {
-	user := User{ID: id}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	var user User
 	err := db.QueryRowContext(ctx, `
 		SELECT email, username FROM users WHERE id = $1
 	`, id).Scan(&user.Email, &user.Username)
+	user.ID = id
 	return user, err
 }

@@ -21,7 +21,9 @@ import (
 )
 
 // ContextKey used on app middlewares.
-type ContextKey int
+type ContextKey struct {
+	Name string
+}
 
 var (
 	db     *sql.DB
@@ -36,11 +38,9 @@ var (
 )
 
 func init() {
-	config.port, _ = strconv.Atoi(env("PORT", "80"))
+	config.port, _ = strconv.Atoi(env("PORT", "3000"))
 	config.appURL, _ = url.Parse(env("APP_URL", "http://localhost:"+strconv.Itoa(config.port)+"/"))
-	config.databaseURL = env(
-		"DATABASE_URL",
-		"postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
+	config.databaseURL = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
 	config.jwtKey = []byte(env("JWT_KEY", "super-duper-secret-key"))
 	smtpHost := env("SMTP_HOST", "smtp.mailtrap.io")
 	config.smtpAddr = net.JoinHostPort(smtpHost, env("SMTP_PORT", "25"))
@@ -69,11 +69,11 @@ func main() {
 	router.HandleFunc("POST", "/api/users", jsonRequired(createUser))
 	router.HandleFunc("POST", "/api/passwordless/start", jsonRequired(passwordlessStart))
 	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
-	router.HandleFunc("GET", "/api/auth_user", guard(getAuthUser))
+	router.HandleFunc("GET", "/api/auth_user", guard(getAuthUser, nil))
 	router.HandleFunc("POST", "/api/logout", logout)
 	router.Handle("GET", "/js/", http.FileServer(http.Dir("static")))
 	router.HandleFunc("GET", "/styles.css", serveFile("static/styles.css"))
-	router.HandleFunc("GET", "/", authOrGuest(servePage("home"), servePage("welcome")))
+	router.HandleFunc("GET", "/", guard(servePage("home"), servePage("welcome")))
 	router.HandleFunc("GET", "/callback", servePage("callback"))
 	router.HandleFunc("GET", "/...", servePage("not-found"))
 
@@ -195,14 +195,4 @@ func servePage(name string) http.HandlerFunc {
 		h.Add("Link", fmt.Sprintf("</js/pages/%s-page.js>; rel=modulepreload; as=script; nopush", name))
 		http.ServeFile(w, r, "static/index.html")
 	}
-}
-
-func authOrGuest(h1, h2 http.HandlerFunc) http.HandlerFunc {
-	return withAuth(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := r.Context().Value(keyAuthUserID).(string); !ok {
-			h2(w, r)
-			return
-		}
-		h1(w, r)
-	})
 }
