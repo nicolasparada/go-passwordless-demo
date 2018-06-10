@@ -200,16 +200,12 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func guard(handler, fallback http.HandlerFunc) http.HandlerFunc {
+func guard(next http.HandlerFunc) http.HandlerFunc {
 	return withAuth(func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := r.Context().Value(keyAuthUserID).(string); !ok {
-			if fallback != nil {
-				fallback(w, r)
-			} else {
-				respondJSON(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			}
+			respondJSON(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
-		handler(w, r)
+		next(w, r)
 	})
 }

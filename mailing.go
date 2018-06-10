@@ -8,16 +8,19 @@ import (
 	"strconv"
 )
 
-var sendMail func(to, subject, body string) error
+// MailSender function to send mails.
+type MailSender func(to, subject, body string) error
 
-func initMailing() {
-	smtpAddr := net.JoinHostPort(config.smtpHost, strconv.Itoa(config.smtpPort))
-	smtpAuth := smtp.PlainAuth("", config.smtpUsername, config.smtpPassword, config.smtpHost)
+var sendMail MailSender
+
+func newMailSender(host string, port int, username, password string) MailSender {
+	smtpAddr := net.JoinHostPort(host, strconv.Itoa(port))
+	smtpAuth := smtp.PlainAuth("", username, password, host)
 	from := mail.Address{
 		Name:    "Passwordless Demo",
 		Address: "noreply@" + config.domain.Host,
 	}
-	sendMail = func(to, subject, body string) error {
+	return func(to, subject, body string) error {
 		toAddr := mail.Address{Address: to}
 		headers := map[string]string{
 			"From":         from.String(),
