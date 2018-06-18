@@ -11,8 +11,6 @@ import (
 // MailSender function to send mails.
 type MailSender func(to, subject, body string) error
 
-var sendMail MailSender
-
 func newMailSender(host string, port int, username, password string) MailSender {
 	smtpAddr := net.JoinHostPort(host, strconv.Itoa(port))
 	smtpAuth := smtp.PlainAuth("", username, password, host)

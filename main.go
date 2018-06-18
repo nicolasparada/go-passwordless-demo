@@ -15,11 +15,12 @@ import (
 )
 
 var (
-	db     *sql.DB
 	config struct {
 		domain url.URL
 		jwtKey []byte
 	}
+	db     *sql.DB
+	sendMail MailSender
 )
 
 func main() {
