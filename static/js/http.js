@@ -35,16 +35,20 @@ function getAuthHeader() {
 export async function handleResponse(res) {
     const body = await res.clone().json().catch(() => res.text())
     const response = {
-        url: res.url,
         statusCode: res.status,
         statusText: res.statusText,
         headers: res.headers,
         body,
     }
-    if (!res.ok) throw Object.assign(
-        new Error(body.message || body || res.statusText),
-        response
-    )
+    if (!res.ok) {
+        const message = typeof body === 'object' && body !== null && 'message' in body
+            ? body.message
+            : typeof body === 'string' && body !== ''
+                ? body
+                : res.statusText
+        const err = new Error(message)
+        throw Object.assign(err, response)
+    }
     return response
 }
 
