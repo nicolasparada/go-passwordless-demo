@@ -15,6 +15,5 @@
   unused-packages = true
 
 [metadata.heroku]
-  root-package = "github.com/nicolasparada/passwordless-demo"
-  install = ["."]
-  go-version = "go1.10.0"
+  root-package = "github.com/nicolasparada/go-passwordless-demo"
+  go-version = "go1.10.3"

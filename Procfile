@@ -1,1 +1,1 @@
-web: passwordless-demo
+web: go-passwordless-demo
