@@ -5,7 +5,7 @@ SET DATABASE = passwordless_demo;
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email STRING UNIQUE,
-    username STRING UNIQUE
+    username STRING(18) UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS verification_codes (

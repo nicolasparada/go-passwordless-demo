@@ -2,7 +2,7 @@ package main
 
 import "regexp"
 
-// Errors -
+// Errors response.
 type Errors struct {
 	Errors map[string]string `json:"errors"`
 }

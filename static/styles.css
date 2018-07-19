@@ -1,5 +1,7 @@
 :root {
+    background-color: white;
     box-sizing: border-box;
+    color: black;
     font-family: sans-serif;
     -ms-overflow-style: -ms-autohiding-scrollbar;
 }
@@ -38,13 +40,4 @@ a {
 [disabled] {
     opacity: .7;
     pointer-events: none;
-}
-
-body:empty {
-    padding-top: 2rem;
-    text-align: center;
-}
-
-body:empty::after {
-    content: 'Loading... please wait.';
 }

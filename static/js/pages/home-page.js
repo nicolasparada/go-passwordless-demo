@@ -3,7 +3,7 @@ import { getAuthUser } from '../auth.js';
 export default function homePage() {
     const authUser = getAuthUser()
     const template = document.createElement('template')
-    template.innerHTML = `
+    template.innerHTML = /*html*/`
         <div class="container">
             <h1>Passwordless Demo</h1>
 
@@ -11,16 +11,12 @@ export default function homePage() {
             <button id="logout-button">Logout</button>
         </div>
     `
-
     const page = template.content
-
-    page.getElementById('logout-button')
-        .addEventListener('click', logout)
-
+    page.getElementById('logout-button').onclick = onLogoutClick
     return page
 }
 
-function logout() {
+function onLogoutClick() {
     localStorage.clear()
     location.reload()
 }

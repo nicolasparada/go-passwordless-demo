@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,71 +9,46 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/joho/godotenv"
+	"github.com/knq/jwt"
 	_ "github.com/lib/pq"
 	"github.com/matryer/way"
 )
 
 var (
-	config struct {
-		domain url.URL
-		jwtKey []byte
-	}
-	db     *sql.DB
-	sendMail MailSender
+	origin    *url.URL
+	db        *sql.DB
+	sendMail  MailSender
+	jwtSigner jwt.Signer
 )
 
 func main() {
-	// Environment variables
-	port, err := strconv.Atoi(env("PORT", "3000"))
-	if err != nil {
-		log.Fatalf("could not parse port: %v\n", err)
-		return
-	}
-	domain := env("APP_URL", fmt.Sprintf("http://localhost:%d/", port))
+	godotenv.Load()
+
+	port := intEnv("PORT", 3000)
+	originStr := env("ORIGIN", fmt.Sprintf("http://localhost:%d/", port))
 	databaseURL := env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
 	smtpHost := env("SMTP_HOST", "smtp.mailtrap.io")
-	smtpPort, err := strconv.Atoi(env("SMTP_PORT", "25"))
-	if err != nil {
-		log.Printf("could not parse SMTP port: %v", err)
-	}
+	smtpPort := intEnv("SMTP_PORT", 25)
 	smtpUsername := os.Getenv("SMTP_USERNAME")
 	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	jwtKey := env("JWT_KEY", "super-duper-secret-key")
 
-	// CLI flags
-	flag.Usage = func() {
-		fmt.Println("Don't forget to set $JWT_KEY. SMTP username and password are required.")
-		flag.PrintDefaults()
+	var err error
+	if origin, err = url.Parse(originStr); err != nil || !origin.IsAbs() {
+		log.Fatalln("invalid origin")
+		return
 	}
-	flag.IntVar(&port, "port", port, "Port ($PORT)")
-	flag.StringVar(&domain, "domain", domain, "Domain ($APP_URL)")
-	flag.StringVar(&databaseURL, "db", databaseURL, "Database address ($DATABASE_URL)")
-	flag.StringVar(&smtpHost, "smtphost", smtpHost, "SMTP host ($SMTP_HOST)")
-	flag.IntVar(&smtpPort, "smtpport", smtpPort, "SMTP port ($SMTP_PORT)")
-	flag.StringVar(&smtpUsername, "smtpuser", smtpUsername, "SMTP username ($SMTP_USERNAME)")
-	flag.StringVar(&smtpPassword, "smtppwd", smtpPassword, "SMTP password ($SMTP_PASSWORD)")
-	flag.Parse()
 
-	// Config
-	if u, err := url.Parse(domain); err != nil {
-		log.Fatalf("could not parse domain URL: %v\n", err)
-		return
-	} else if !u.IsAbs() {
-		log.Fatalln("could not use a non absolute domain URL")
-		return
-	} else {
-		config.domain = *u
+	if i, err := strconv.Atoi(origin.Port()); err == nil {
+		port = i
 	}
-	if smtpUsername == "" {
-		log.Fatalln("could not find SMTP_USERNAME on environment variables")
-		return
-	}
-	if smtpPassword == "" {
-		log.Fatalln("could not find SMTP_PASSWORD on environment variables")
-		return
-	}
-	config.jwtKey = []byte(env("JWT_KEY", "super-duper-secret-key"))
 
-	// Database
+	if smtpUsername == "" || smtpPassword == "" {
+		log.Fatalln("remember to set $SMTP_USERNAME and $SMTP_PASSWORD")
+		return
+	}
+
 	if db, err = sql.Open("postgres", databaseURL); err != nil {
 		log.Fatalf("could not open database connection: %v\n", err)
 		return
@@ -85,10 +59,13 @@ func main() {
 		return
 	}
 
-	// Mailing
 	sendMail = newMailSender(smtpHost, smtpPort, smtpUsername, smtpPassword)
 
-	// Routing
+	if jwtSigner, err = jwt.HS256.New([]byte(jwtKey)); err != nil {
+		log.Fatalf("could not create JWT signer: %v\n", err)
+		return
+	}
+
 	router := way.NewRouter()
 	router.HandleFunc("POST", "/api/users", requireJSON(createUser))
 	router.HandleFunc("POST", "/api/passwordless/start", requireJSON(passwordlessStart))
@@ -96,9 +73,14 @@ func main() {
 	router.HandleFunc("GET", "/api/auth_user", guard(getAuthUser))
 	router.Handle("GET", "/...", http.FileServer(SPAFileSystem{http.Dir("static")}))
 
-	// Server
-	log.Printf("starting server at %s 🚀\n", config.domain.String())
-	log.Fatalf("could not start server: %v\n", http.ListenAndServe(fmt.Sprintf(":%d", port), withRecover(router)))
+	log.Printf("accepting connections on port: %d\n", port)
+	log.Printf("starting server at %s 🚀\n", origin.String())
+
+	addr := fmt.Sprintf(":%d", port)
+	handler := withRecoverer(router)
+	if err = http.ListenAndServe(addr, handler); err != nil {
+		log.Fatalf("could not start server: %v\n", err)
+	}
 }
 
 func env(key, fallbackValue string) string {
@@ -107,4 +89,16 @@ func env(key, fallbackValue string) string {
 		return fallbackValue
 	}
 	return v
+}
+
+func intEnv(key string, fallbackValue int) int {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return fallbackValue
+	}
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return fallbackValue
+	}
+	return i
 }

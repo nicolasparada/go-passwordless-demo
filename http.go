@@ -29,18 +29,10 @@ func (fs SPAFileSystem) Open(name string) (http.File, error) {
 	return f, nil
 }
 
-func respondJSON(w http.ResponseWriter, payload interface{}, statusCode int) {
-	switch value := payload.(type) {
-	case string:
-		payload = map[string]string{"message": value}
-	case int:
-		payload = map[string]int{"value": value}
-	case bool:
-		payload = map[string]bool{"result": value}
-	}
+func respond(w http.ResponseWriter, payload interface{}, statusCode int) {
 	b, err := json.Marshal(payload)
 	if err != nil {
-		respondInternalError(w, fmt.Errorf("could not marshal response payload: %v", err))
+		respondError(w, fmt.Errorf("could not marshal response payload: %v", err))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -48,26 +40,24 @@ func respondJSON(w http.ResponseWriter, payload interface{}, statusCode int) {
 	w.Write(b)
 }
 
-func respondInternalError(w http.ResponseWriter, err error) {
+func respondError(w http.ResponseWriter, err error) {
 	log.Println(err)
-	respondJSON(w,
+	respond(w,
 		http.StatusText(http.StatusInternalServerError),
 		http.StatusInternalServerError)
 }
 
 func requireJSON(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ct := r.Header.Get("Content-Type")
-		isJSON := strings.HasPrefix(ct, "application/json")
-		if !isJSON {
-			respondJSON(w, "JSON body required", http.StatusUnsupportedMediaType)
+		if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+			respond(w, "content type of application/json required", http.StatusUnsupportedMediaType)
 			return
 		}
 		next(w, r)
 	}
 }
 
-func withRecover(next http.Handler) http.Handler {
+func withRecoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -83,7 +73,7 @@ func withRecover(next http.Handler) http.Handler {
 				default:
 					err = errors.New("Unknown panic")
 				}
-				respondInternalError(w, err)
+				respondError(w, err)
 			}
 		}()
 

@@ -16,7 +16,7 @@ func newMailSender(host string, port int, username, password string) MailSender 
 	smtpAuth := smtp.PlainAuth("", username, password, host)
 	from := mail.Address{
 		Name:    "Passwordless Demo",
-		Address: "noreply@" + config.domain.Host,
+		Address: "noreply@" + origin.Hostname(),
 	}
 	return func(to, subject, body string) error {
 		toAddr := mail.Address{Address: to}

@@ -2,23 +2,45 @@
  * @returns {AuthUser=}
  */
 export function getAuthUser() {
-    const authUserItem = localStorage.getItem('auth_user')
-    const expiresAtItem = localStorage.getItem('expires_at')
-
-    if (authUserItem !== null && expiresAtItem !== null) {
-        const expiresAt = new Date(expiresAtItem)
-        if (!isNaN(expiresAt.valueOf()) && expiresAt > new Date()) {
-            try {
-                return JSON.parse(authUserItem)
-            } catch (_) { }
-        }
+    if (!isAuthenticated()) {
+        return null
     }
 
-    return null
+    const authUser = localStorage.getItem('auth_user')
+    if (authUser === null) {
+        return null
+    }
+
+    try {
+        return JSON.parse(authUser)
+    } catch (_) {
+        return null
+    }
 }
 
 export function isAuthenticated() {
-    return localStorage.getItem('jwt') !== null && getAuthUser() !== null
+    const token = localStorage.getItem('token')
+    const expiresAtItem = localStorage.getItem('expires_at')
+    if (token === null || expiresAtItem === null) {
+        return false
+    }
+
+    const expiresAt = new Date(expiresAtItem)
+    if (isNaN(expiresAt.valueOf()) || expiresAt <= new Date()) {
+        return false
+    }
+
+    return true
+}
+
+/**
+ * @param {function} fn1
+ * @param {function} fn2
+ */
+export function guard(fn1, fn2) {
+    return (...args) => isAuthenticated()
+        ? fn1(...args)
+        : fn2(...args)
 }
 
 /**
