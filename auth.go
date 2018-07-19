@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -78,7 +79,12 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 		respondError(w, fmt.Errorf("could not execute magic link template: %v", err))
 		return
 	}
-	if err := sendMail(input.Email, "Magic Link", body.String()); err != nil {
+
+	if err := mailSender.send(Mail{
+		To:      mail.Address{Address: input.Email},
+		Subject: "Magic Link",
+		Body:    body.String(),
+	}); err != nil {
 		respondError(w, fmt.Errorf("could not mail magic link: %v", err))
 		return
 	}

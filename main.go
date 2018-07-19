@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	origin    *url.URL
-	db        *sql.DB
-	sendMail  MailSender
-	jwtSigner jwt.Signer
+	origin     *url.URL
+	db         *sql.DB
+	mailSender *MailSender
+	jwtSigner  jwt.Signer
 )
 
 func main() {
@@ -59,7 +59,7 @@ func main() {
 		return
 	}
 
-	sendMail = newMailSender(smtpHost, smtpPort, smtpUsername, smtpPassword)
+	mailSender = newMailSender(smtpHost, smtpPort, smtpUsername, smtpPassword)
 
 	if jwtSigner, err = jwt.HS256.New([]byte(jwtKey)); err != nil {
 		log.Fatalf("could not create JWT signer: %v\n", err)
