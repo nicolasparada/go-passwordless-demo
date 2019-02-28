@@ -1,5 +1,5 @@
 const template = document.createElement('template')
-template.innerHTML = /*html*/`
+template.innerHTML = `
     <div class="container">
         <h1>Not Found Page</h1>
     </div>

@@ -5,34 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
+	"os"
 	"runtime/debug"
-	"strings"
 )
-
-// ContextKey used on app middlewares.
-type ContextKey struct {
-	Name string
-}
 
 // SPAFileSystem file system with single-page applications support.
 type SPAFileSystem struct {
-	fs http.FileSystem
+	root http.Dir
 }
 
 // Open wraps http.Dir Open method to enable single-page applications.
 func (fs SPAFileSystem) Open(name string) (http.File, error) {
-	f, err := fs.fs.Open(name)
-	if err != nil {
-		return fs.fs.Open("index.html")
+	f, err := fs.root.Open(name)
+	if os.IsNotExist(err) {
+		return fs.root.Open("index.html")
 	}
-	return f, nil
+	return f, err
 }
 
 func respond(w http.ResponseWriter, payload interface{}, statusCode int) {
 	b, err := json.Marshal(payload)
 	if err != nil {
-		respondError(w, fmt.Errorf("could not marshal response payload: %v", err))
+		respondErr(w, fmt.Errorf("could not marshal response payload: %v", err))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -40,7 +36,7 @@ func respond(w http.ResponseWriter, payload interface{}, statusCode int) {
 	w.Write(b)
 }
 
-func respondError(w http.ResponseWriter, err error) {
+func respondErr(w http.ResponseWriter, err error) {
 	log.Println(err)
 	respond(w,
 		http.StatusText(http.StatusInternalServerError),
@@ -49,7 +45,7 @@ func respondError(w http.ResponseWriter, err error) {
 
 func requireJSON(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		if ct, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || ct != "application/json" {
 			respond(w, "content type of application/json required", http.StatusUnsupportedMediaType)
 			return
 		}
@@ -73,7 +69,7 @@ func withRecoverer(next http.Handler) http.Handler {
 				default:
 					err = errors.New("Unknown panic")
 				}
-				respondError(w, err)
+				respondErr(w, err)
 			}
 		}()
 

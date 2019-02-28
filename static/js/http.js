@@ -13,7 +13,7 @@ async function handleResponse(res) {
     }
 
     if (!res.ok) {
-        const message = typeof body === 'object' && body !== null && 'message' in body
+        const message = typeof body === 'object' && body !== null && typeof body.message === 'string'
             ? body.message
             : typeof body === 'string' && body !== ''
                 ? body

@@ -2,15 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 
+	"github.com/hako/branca"
 	"github.com/joho/godotenv"
-	"github.com/knq/jwt"
 	_ "github.com/lib/pq"
 	"github.com/matryer/way"
 )
@@ -19,20 +21,31 @@ var (
 	origin     *url.URL
 	db         *sql.DB
 	mailSender *MailSender
-	jwtSigner  jwt.Signer
+	codec      *branca.Branca
 )
 
 func main() {
 	godotenv.Load()
 
-	port := intEnv("PORT", 3000)
-	originStr := env("ORIGIN", fmt.Sprintf("http://localhost:%d/", port))
-	databaseURL := env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
-	smtpHost := env("SMTP_HOST", "smtp.mailtrap.io")
-	smtpPort := intEnv("SMTP_PORT", 25)
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
-	jwtKey := env("JWT_KEY", "super-duper-secret-key")
+	var (
+		port         = intEnv("PORT", 3000)
+		originStr    = env("ORIGIN", fmt.Sprintf("http://localhost:%d", port))
+		dbURL        = env("DB_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
+		smtpHost     = env("SMTP_HOST", "smtp.mailtrap.io")
+		smtpPort     = intEnv("SMTP_PORT", 25)
+		smtpUsername = mustEnv("SMTP_USERNAME")
+		smtpPassword = mustEnv("SMTP_PASSWORD")
+		secretKey    = env("SECRET_KEY", "supersecretkeyyoushouldnotcommit")
+	)
+
+	flag.IntVar(&port, "p", port, "Port ($PORT)")
+	flag.StringVar(&originStr, "origin", originStr, "Origin ($ORIGIN)")
+	flag.StringVar(&dbURL, "db", dbURL, "Database URL ($DB_URL)")
+	flag.StringVar(&smtpHost, "smtp.host", smtpHost, "SMTP Host ($SMTP_HOST)")
+	flag.IntVar(&smtpPort, "smtp.port", smtpPort, "SMTP Port ($SMTP_PORT)")
+	flag.Parse()
+
+	fmt.Println(smtpUsername, smtpPassword)
 
 	var err error
 	if origin, err = url.Parse(originStr); err != nil || !origin.IsAbs() {
@@ -44,16 +57,13 @@ func main() {
 		port = i
 	}
 
-	if smtpUsername == "" || smtpPassword == "" {
-		log.Fatalln("remember to set $SMTP_USERNAME and $SMTP_PASSWORD")
-		return
-	}
-
-	if db, err = sql.Open("postgres", databaseURL); err != nil {
+	if db, err = sql.Open("postgres", dbURL); err != nil {
 		log.Fatalf("could not open database connection: %v\n", err)
 		return
 	}
+
 	defer db.Close()
+
 	if err = db.Ping(); err != nil {
 		log.Fatalf("could not ping to database: %v\n", err)
 		return
@@ -61,24 +71,25 @@ func main() {
 
 	mailSender = newMailSender(smtpHost, smtpPort, smtpUsername, smtpPassword)
 
-	if jwtSigner, err = jwt.HS256.New([]byte(jwtKey)); err != nil {
-		log.Fatalf("could not create JWT signer: %v\n", err)
-		return
-	}
+	codec = branca.NewBranca(secretKey)
+	codec.SetTTL(uint32(tokenLifespan.Seconds()))
 
-	router := way.NewRouter()
-	router.HandleFunc("POST", "/api/users", requireJSON(createUser))
-	router.HandleFunc("POST", "/api/passwordless/start", requireJSON(passwordlessStart))
-	router.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
-	router.HandleFunc("GET", "/api/auth_user", guard(getAuthUser))
-	router.Handle("GET", "/...", http.FileServer(SPAFileSystem{http.Dir("static")}))
+	// Weird bug that maybe only happens on my machine.
+	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
+
+	r := way.NewRouter()
+	r.HandleFunc("POST", "/api/users", requireJSON(createUser))
+	r.HandleFunc("POST", "/api/passwordless/start", requireJSON(passwordlessStart))
+	r.HandleFunc("GET", "/api/passwordless/verify_redirect", passwordlessVerifyRedirect)
+	r.HandleFunc("GET", "/api/auth_user", guard(getAuthUser))
+	r.Handle("GET", "/...", http.FileServer(SPAFileSystem{http.Dir("static")}))
 
 	log.Printf("accepting connections on port: %d\n", port)
 	log.Printf("starting server at %s 🚀\n", origin.String())
 
 	addr := fmt.Sprintf(":%d", port)
-	handler := withRecoverer(router)
-	if err = http.ListenAndServe(addr, handler); err != nil {
+	h := withRecoverer(r)
+	if err = http.ListenAndServe(addr, h); err != nil {
 		log.Fatalf("could not start server: %v\n", err)
 	}
 }
@@ -87,6 +98,14 @@ func env(key, fallbackValue string) string {
 	v, ok := os.LookupEnv(key)
 	if !ok {
 		return fallbackValue
+	}
+	return v
+}
+
+func mustEnv(key string) string {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		panic(fmt.Sprintf("%s required on environment variables", key))
 	}
 	return v
 }

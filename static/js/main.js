@@ -1,19 +1,26 @@
-import Router from 'https://unpkg.com/@nicolasparada/router@0.6.0/router.js';
+import { createRouter } from 'https://unpkg.com/@nicolasparada/router@0.8.0/router.js';
 import { guard } from './auth.js';
 import { importWithCache } from './dynamic-import.js';
 
-const router = new Router()
+const r = createRouter()
 
-router.handle('/', guard(view('home'), view('access')))
-router.handle('/callback', view('callback'))
-router.handle(/^\//, view('not-found'))
-router.install(async result => {
+r.route('/', guard(view('home'), view('access')))
+r.route('/callback', view('callback'))
+r.route(/^\//, view('not-found'))
+r.subscribe(async result => {
     document.body.innerHTML = ''
-    document.body.appendChild(await result)
+    result = await result
+    if (typeof result === 'string') {
+        document.body.innerHTML = result
+    } else if (result instanceof Node) {
+        document.body.appendChild(result)
+    } else {
+        throw new Error('cannot render page')
+    }
 })
+r.install()
 
 function view(name) {
     return (...args) => importWithCache(`/js/pages/${name}-page.js`)
-        .then(m => m.default)
-        .then(h => h(...args))
+        .then(m => m.default(...args))
 }

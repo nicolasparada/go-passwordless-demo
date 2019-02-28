@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/lib/pq"
 )
 
 // User represents an authenticated user or a resource owner.
@@ -29,11 +27,13 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := make(map[string]string)
+	input.Email = strings.TrimSpace(input.Email)
 	if input.Email == "" {
 		errs["email"] = "Email required"
 	} else if !rxEmail.MatchString(input.Email) {
 		errs["email"] = "Invalid email"
 	}
+	input.Username = strings.TrimSpace(input.Username)
 	if input.Username == "" {
 		errs["username"] = "Username required"
 	} else if !rxUsername.MatchString(input.Username) {
@@ -47,10 +47,9 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	err := db.QueryRowContext(r.Context(), `
 		INSERT INTO users (email, username) VALUES ($1, $2)
-		RETURNING id
-	`, input.Email, input.Username).Scan(&user.ID)
-	if errPq, ok := err.(*pq.Error); ok && errPq.Code.Name() == "unique_violation" {
-		if strings.Contains(errPq.Error(), "email") {
+		RETURNING id`, input.Email, input.Username).Scan(&user.ID)
+	if isUniqueViolation(err) {
+		if strings.Contains(err.Error(), "email") {
 			errs["email"] = "Email taken"
 		} else {
 			errs["username"] = "Username taken"
@@ -58,7 +57,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		respond(w, errs, http.StatusForbidden)
 		return
 	} else if err != nil {
-		respondError(w, fmt.Errorf("could not insert user: %v", err))
+		respondErr(w, fmt.Errorf("could not insert user: %v", err))
 		return
 	}
 
@@ -68,15 +67,14 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	respond(w, user, http.StatusCreated)
 }
 
-func fetchUser(ctx context.Context, id string) (User, error) {
+func userByID(ctx context.Context, id string) (User, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	var user User
-	if err := db.QueryRowContext(ctx, `
-		SELECT email, username FROM users WHERE id = $1
-	`, id).Scan(&user.Email, &user.Username); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT email, username FROM users WHERE id = $1", id).
+		Scan(&user.Email, &user.Username); err != nil {
 		return user, err
 	}
 

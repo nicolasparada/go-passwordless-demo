@@ -10,20 +10,19 @@ import (
 	"net/http"
 	"net/mail"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/knq/jwt"
-	"github.com/lib/pq"
 )
 
-const jwtLifespan = time.Hour * 24 * 14 // 14 days
-
-var (
-	keyAuthUserID = ContextKey{"auth_user_id"}
-	magicLinkTmpl = template.Must(template.ParseFiles("templates/magic-link.html"))
+const (
+	keyAuthUserID            = key("auth_user_id")
+	verificationCodeLifespan = time.Minute * 15
+	tokenLifespan            = time.Hour * 24 * 14
 )
+
+var magicLinkTmpl = template.Must(template.ParseFiles("templates/magic-link.html"))
+
+type key string
 
 func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	var input struct {
@@ -37,14 +36,16 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := make(map[string]string)
+	input.Email = strings.TrimSpace(input.Email)
 	if input.Email == "" {
 		errs["email"] = "Email required"
 	} else if !rxEmail.MatchString(input.Email) {
 		errs["email"] = "Invalid email"
 	}
+	input.RedirectURI = strings.TrimSpace(input.RedirectURI)
 	if input.RedirectURI == "" {
 		errs["redirectUri"] = "Redirect URI required"
-	} else if u, err := url.Parse(input.RedirectURI); err != nil || !u.IsAbs() {
+	} else if _, err := url.ParseRequestURI(input.RedirectURI); err != nil {
 		errs["redirectUri"] = "Invalid redirect URI"
 	}
 	if len(errs) != 0 {
@@ -56,36 +57,38 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	err := db.QueryRowContext(r.Context(), `
 		INSERT INTO verification_codes (user_id) VALUES
 			((SELECT id FROM users WHERE email = $1))
-		RETURNING id
-	`, input.Email).Scan(&verificationCode)
-	if errPq, ok := err.(*pq.Error); ok && errPq.Code.Name() == "not_null_violation" {
+		RETURNING id`, input.Email).Scan(&verificationCode)
+	if isNotNullViolation(err) {
 		respond(w, "No user found with that email", http.StatusNotFound)
 		return
 	} else if err != nil {
-		respondError(w, fmt.Errorf("could not insert verification code: %v", err))
+		respondErr(w, fmt.Errorf("could not insert verification code: %v", err))
 		return
 	}
 
-	q := make(url.Values)
-	q.Set("verification_code", verificationCode)
-	q.Set("redirect_uri", input.RedirectURI)
 	magicLink := *origin
 	magicLink.Path = "/api/passwordless/verify_redirect"
+	q := magicLink.Query()
+	q.Set("verification_code", verificationCode)
+	q.Set("redirect_uri", input.RedirectURI)
 	magicLink.RawQuery = q.Encode()
 
-	var body bytes.Buffer
-	data := map[string]string{"MagicLink": magicLink.String()}
-	if err := magicLinkTmpl.Execute(&body, data); err != nil {
-		respondError(w, fmt.Errorf("could not execute magic link template: %v", err))
+	var b bytes.Buffer
+	data := map[string]interface{}{
+		"MagicLink": magicLink.String(),
+		"Minutes":   int(verificationCodeLifespan.Minutes()),
+	}
+	if err := magicLinkTmpl.Execute(&b, data); err != nil {
+		respondErr(w, fmt.Errorf("could not execute magic link template: %v", err))
 		return
 	}
 
 	if err := mailSender.send(Mail{
 		To:      mail.Address{Address: input.Email},
 		Subject: "Magic Link",
-		Body:    body.String(),
+		Body:    b.String(),
 	}); err != nil {
-		respondError(w, fmt.Errorf("could not mail magic link: %v", err))
+		respondErr(w, fmt.Errorf("could not mail magic link: %v", err))
 		return
 	}
 
@@ -98,6 +101,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	redirectURI := q.Get("redirect_uri")
 
 	errs := make(map[string]string)
+	verificationCode = strings.TrimSpace(verificationCode)
 	if verificationCode == "" {
 		errs["verification_code"] = "Verification code required"
 	} else if !rxUUID.MatchString(verificationCode) {
@@ -105,9 +109,10 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 	var callback *url.URL
 	var err error
+	redirectURI = strings.TrimSpace(redirectURI)
 	if redirectURI == "" {
 		errs["redirect_uri"] = "Redirect URI required"
-	} else if callback, err = url.Parse(redirectURI); err != nil || !callback.IsAbs() {
+	} else if callback, err = url.ParseRequestURI(redirectURI); err != nil {
 		errs["redirect_uri"] = "Invalid redirect URI"
 	}
 	if len(errs) != 0 {
@@ -116,32 +121,33 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID string
+	var createdAt time.Time
 	if err := db.QueryRowContext(r.Context(), `
-		DELETE FROM verification_codes
-		WHERE id = $1
-			AND created_at >= now() - INTERVAL '15m'
-		RETURNING user_id
-	`, verificationCode).Scan(&userID); err == sql.ErrNoRows {
-		respond(w, "Link expired or already used", http.StatusBadRequest)
+		DELETE FROM verification_codes WHERE id = $1
+		RETURNING user_id, created_at`, verificationCode).
+		Scan(&userID, &createdAt); err == sql.ErrNoRows {
+		respond(w, "Magic link not found", http.StatusNotFound)
 		return
 	} else if err != nil {
-		respondError(w, fmt.Errorf("could not delete verification code: %v", err))
+		respondErr(w, fmt.Errorf("could not delete verification code: %v", err))
 		return
 	}
 
-	exp := time.Now().Add(jwtLifespan)
-	token, err := jwtSigner.Encode(jwt.Claims{
-		Subject:    userID,
-		Expiration: json.Number(strconv.FormatInt(exp.Unix(), 10)),
-	})
+	if createdAt.Add(verificationCodeLifespan).Before(time.Now()) {
+		respond(w, "Link expired", http.StatusGone)
+		return
+	}
+
+	token, err := codec.EncodeToString(userID)
 	if err != nil {
-		respondError(w, fmt.Errorf("could not create JWT: %v", err))
+		respondErr(w, fmt.Errorf("could not create token: %v", err))
 		return
 	}
 
-	expiresAt, _ := exp.MarshalText()
-	f := make(url.Values)
-	f.Set("token", string(token))
+	expiresAt, _ := time.Now().Add(tokenLifespan).MarshalText()
+
+	f := url.Values{}
+	f.Set("token", token)
 	f.Set("expires_at", string(expiresAt))
 	callback.Fragment = f.Encode()
 
@@ -152,12 +158,12 @@ func getAuthUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUserID := ctx.Value(keyAuthUserID).(string)
 
-	user, err := fetchUser(ctx, authUserID)
+	user, err := userByID(ctx, authUserID)
 	if err == sql.ErrNoRows {
 		respond(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
 		return
 	} else if err != nil {
-		respondError(w, fmt.Errorf("could not query auth user: %v", err))
+		respondErr(w, fmt.Errorf("could not query auth user: %v", err))
 		return
 	}
 
@@ -173,15 +179,20 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		token := authHeader[7:]
-
-		var claims jwt.Claims
-		if err := jwtSigner.Decode([]byte(token), &claims); err != nil {
+		userID, err := codec.DecodeToString(token)
+		if err != nil {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
+		userID = strings.TrimSpace(userID)
+		if !rxUUID.MatchString(userID) {
+			http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
+			return
+		}
+
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, keyAuthUserID, claims.Subject)
+		ctx = context.WithValue(ctx, keyAuthUserID, userID)
 
 		next(w, r.WithContext(ctx))
 	}

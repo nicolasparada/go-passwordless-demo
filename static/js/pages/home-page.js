@@ -3,7 +3,7 @@ import { getAuthUser } from '../auth.js';
 export default function homePage() {
     const authUser = getAuthUser()
     const template = document.createElement('template')
-    template.innerHTML = /*html*/`
+    template.innerHTML = `
         <div class="container">
             <h1>Passwordless Demo</h1>
 

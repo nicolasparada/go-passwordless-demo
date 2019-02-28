@@ -1,4 +1,3 @@
-import { navigate } from 'https://unpkg.com/@nicolasparada/router@0.6.0/router.js';
 import http from '../http.js';
 
 export default async function callbackPage() {
@@ -22,7 +21,7 @@ export default async function callbackPage() {
     } catch (err) {
         alert(err.message)
     } finally {
-        navigate('/', true)
+        location.replace('/')
     }
 }
 
