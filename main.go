@@ -45,8 +45,6 @@ func main() {
 	flag.IntVar(&smtpPort, "smtp.port", smtpPort, "SMTP Port ($SMTP_PORT)")
 	flag.Parse()
 
-	fmt.Println(smtpUsername, smtpPassword)
-
 	var err error
 	if origin, err = url.Parse(originStr); err != nil || !origin.IsAbs() {
 		log.Fatalln("invalid origin")
