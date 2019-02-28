@@ -30,7 +30,7 @@ func main() {
 	var (
 		port         = intEnv("PORT", 3000)
 		originStr    = env("ORIGIN", fmt.Sprintf("http://localhost:%d", port))
-		dbURL        = env("DB_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
+		dbURL        = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless_demo?sslmode=disable")
 		smtpHost     = env("SMTP_HOST", "smtp.mailtrap.io")
 		smtpPort     = intEnv("SMTP_PORT", 25)
 		smtpUsername = mustEnv("SMTP_USERNAME")
@@ -40,7 +40,7 @@ func main() {
 
 	flag.IntVar(&port, "p", port, "Port ($PORT)")
 	flag.StringVar(&originStr, "origin", originStr, "Origin ($ORIGIN)")
-	flag.StringVar(&dbURL, "db", dbURL, "Database URL ($DB_URL)")
+	flag.StringVar(&dbURL, "db", dbURL, "Database URL ($DATABASE_URL)")
 	flag.StringVar(&smtpHost, "smtp.host", smtpHost, "SMTP Host ($SMTP_HOST)")
 	flag.IntVar(&smtpPort, "smtp.port", smtpPort, "SMTP Port ($SMTP_PORT)")
 	flag.Parse()
