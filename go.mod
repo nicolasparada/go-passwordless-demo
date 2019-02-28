@@ -1,4 +1,4 @@
-// +heroku goVersion go1.12
+// +heroku goVersion go1.12rc1
 
 module github.com/nicolasparada/go-passwordless-demo
 
