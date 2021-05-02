@@ -1,5 +1,0 @@
-.env
-vendor
-cockroach-data
-*.exe
-*.http
