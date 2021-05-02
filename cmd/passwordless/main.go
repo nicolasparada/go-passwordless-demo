@@ -78,7 +78,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 	if migrate {
 		// postgres
 		if disableCRDBRetries {
-			_, err := db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+			_, err := db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`)
 			if err != nil {
 				return fmt.Errorf("could not migrate sql schema: %w", err)
 			}
