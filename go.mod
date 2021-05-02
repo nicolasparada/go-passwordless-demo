@@ -1,4 +1,5 @@
 // +heroku goVersion go1.16
+// +heroku install ./cmd/passwordless
 
 module github.com/nicolasparada/go-passwordless-demo
 
