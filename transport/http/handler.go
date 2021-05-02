@@ -25,7 +25,7 @@ func NewHandler(svc transport.Service, l *log.Logger) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", h.withAuthUserID(api))
-	mux.Handle("/", staticHandler())
+	mux.Handle("/", h.staticHandler())
 	return mux
 }
 

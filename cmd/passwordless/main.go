@@ -18,7 +18,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/nicolasparada/go-passwordless-demo"
-	smtpmailing "github.com/nicolasparada/go-passwordless-demo/mailing/smtp"
+	smtpnotification "github.com/nicolasparada/go-passwordless-demo/notification/smtp"
 	"github.com/nicolasparada/go-passwordless-demo/repo/cockroach"
 	httptransport "github.com/nicolasparada/go-passwordless-demo/transport/http"
 
@@ -83,20 +83,30 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 	}
 
 	repo := &cockroach.Repository{DB: db, DisableCRDBRetries: disableCRDBRetries}
-	mailSender := &smtpmailing.Sender{
-		FromName:    "Passwordless",
-		FromAddress: "noreply@" + origin.Hostname(),
+	mailFromName := "Passwordless"
+	mailFromAddress := "noreply@" + origin.Hostname()
+	magicLinkComposer, err := smtpnotification.MagicLinkComposer(
+		mailFromName, mailFromAddress,
+	)
+	if err != nil {
+		return fmt.Errorf("could not create magic link composer: %w", err)
+	}
+
+	magicLinkSender := &smtpnotification.Sender{
+		FromName:    mailFromName,
+		FromAddress: mailFromAddress,
 		Host:        smtpHost,
 		Port:        smtpPort,
 		Username:    smtpUsername,
 		Password:    smtpPassword,
+		ComposeFunc: magicLinkComposer,
 	}
 	svc := &passwordless.Service{
-		Logger:       logger,
-		Origin:       origin,
-		Repository:   repo,
-		MailSender:   mailSender,
-		AuthTokenKey: authTokenKey,
+		Logger:          logger,
+		Origin:          origin,
+		Repository:      repo,
+		MagicLinkSender: magicLinkSender,
+		AuthTokenKey:    authTokenKey,
 	}
 	h := httptransport.NewHandler(svc, logger)
 

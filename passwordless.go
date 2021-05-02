@@ -1,7 +1,6 @@
 package passwordless
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -10,11 +9,11 @@ import (
 	"log"
 	"net/url"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/hako/branca"
 	"github.com/hako/durafmt"
+	"github.com/nicolasparada/go-passwordless-demo/notification"
 )
 
 //go:embed web/template/mail/magic-link.html.tmpl
@@ -42,14 +41,11 @@ var (
 )
 
 type Service struct {
-	Logger       *log.Logger
-	Origin       *url.URL
-	Repository   Repository
-	MailSender   MailSender
-	AuthTokenKey string
-
-	magicLinkMailTmpl      *template.Template
-	magicLinkMailTmplOncer sync.Once
+	Logger          *log.Logger
+	Origin          *url.URL
+	Repository      Repository
+	MagicLinkSender NotificationSender
+	AuthTokenKey    string
 }
 
 type Repository interface {
@@ -75,8 +71,8 @@ func (vc VerificationCode) Expired() bool {
 	return vc.CreatedAt.Add(verificationCodeTTL).Before(time.Now())
 }
 
-type MailSender interface {
-	Send(to, subject, html, text string) error
+type NotificationSender interface {
+	Send(ctx context.Context, data notification.MagicLinkData, to string) error
 }
 
 type Auth struct {
@@ -89,12 +85,6 @@ type User struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
 	Username string `json:"username"`
-}
-
-type authMailTmplData struct {
-	Origin    *url.URL
-	TTL       time.Duration
-	MagicLink *url.URL
 }
 
 func (svc *Service) SendMagicLink(ctx context.Context, email, redirectURI string) error {
@@ -112,16 +102,6 @@ func (svc *Service) SendMagicLink(ctx context.Context, email, redirectURI string
 		return err
 	}
 
-	svc.magicLinkMailTmplOncer.Do(func() {
-		svc.magicLinkMailTmpl, err = template.New("mail/magic-link.html").Funcs(tmplFuncs).Parse(magicLinkMailTmpl)
-		if err != nil {
-			err = fmt.Errorf("could not parse magic link mail template: %w", err)
-		}
-	})
-	if err != nil {
-		return err
-	}
-
 	// See transport/http/handler.go
 	q := url.Values{}
 	q.Set("email", email)
@@ -131,19 +111,13 @@ func (svc *Service) SendMagicLink(ctx context.Context, email, redirectURI string
 	magicLink.Path = "/api/verify-magic-link"
 	magicLink.RawQuery = q.Encode()
 
-	renderer := &bytes.Buffer{}
-	err = svc.magicLinkMailTmpl.Execute(renderer, authMailTmplData{
+	err = svc.MagicLinkSender.Send(ctx, notification.MagicLinkData{
 		Origin:    svc.Origin,
 		TTL:       verificationCodeTTL,
 		MagicLink: magicLink,
-	})
+	}, email)
 	if err != nil {
-		return fmt.Errorf("could not render magic link mail template: %w", err)
-	}
-
-	err = svc.MailSender.Send(email, "Login to Golang Passwordless Demo", renderer.String(), magicLink.String())
-	if err != nil {
-		return fmt.Errorf("could not mail magic link to user: %w", err)
+		return fmt.Errorf("could not send magic link to user: %w", err)
 	}
 
 	return nil
