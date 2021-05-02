@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login to Golang Passwordless Demo</title>
+    <link rel="shortcut icon" href="data:,">
+    <style>
+        :root {
+            box-sizing: border-box;
+        }
+
+        *,
+        ::before,
+        ::after {
+            box-sizing: inherit;
+        }
+
+        body {
+            margin: 0;
+            background-color: black;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        .container {
+            width: calc(100% - 4rem);
+            max-width: 65ch;
+            margin: 2rem auto;
+        }
+
+        a {
+            color: hsl(170, 100%, 69%);
+        }
+
+        .cta {
+            display: inline-block;
+            margin: 1rem auto 0 auto;
+            text-align: center;
+            color: inherit;
+            padding: 1rem 2rem;
+            background-color: hsl(0, 0%, 4%);
+            border: 1px solid hsl(0, 0%, 17%);
+            text-decoration: none;
+            touch-action: manipulation;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Golang Passwordless Demo</h1>
+        <p>Click the link down below to login to <a href="{{ .Origin }}" target="_blank" rel="noopener noreferrer">{{ .Origin.Hostname }}</a>.</p>
+        <p>This link expires in {{ human_duration .TTL }}.</p>
+        <a class="cta" href="{{ .MagicLink }}" target="_blank" rel="noopener noreferrer">Login</a>
+    </main>
+</body>
+</html>

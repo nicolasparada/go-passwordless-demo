@@ -1,0 +1,79 @@
+:root {
+    box-sizing: border-box;
+}
+
+*,
+::before,
+::after {
+    box-sizing: inherit;
+}
+
+body {
+    margin: 0;
+    background-color: black;
+    color: white;
+    font-family: sans-serif;
+}
+
+.container {
+    width: calc(100% - 2rem);
+    max-width: 65ch;
+    margin: 0 auto;
+}
+
+main {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+input {
+    font: inherit;
+    color: inherit;
+    padding: 1rem;
+    background-color: hsl(0, 0%, 4%);
+    border: .0625rem solid hsl(0, 0%, 17%);
+    width: 100%;
+}
+
+input:hover {
+    border-color: hsl(0, 0%, 34%);
+}
+
+label {
+    display: block;
+    margin-bottom: .25rem;
+    user-select: none;
+    touch-action: manipulation;
+    font-size: .8rem;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    padding: 1rem 2rem;
+    background-color: hsl(0, 0%, 4%);
+    border: .0625rem solid hsl(0, 0%, 17%);
+    touch-action: manipulation;
+    user-select: none;
+}
+
+button:hover {
+    border-color: hsl(0, 0%, 34%);
+}
+
+button:active {
+    background-color: black;
+    border-color: white;
+}
+
+.btn-grp {
+    margin-bottom: 1rem;
+}
+
+form {
+    max-width: 40ch;
+}
