@@ -41,22 +41,22 @@ func main() {
 
 func run(ctx context.Context, logger *log.Logger, args []string) error {
 	var (
-		port, _               = strconv.ParseUint(env("PORT", "3000"), 10, 64)
-		databaseURL           = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless?sslmode=disable")
-		disableCRDBRetries, _ = strconv.ParseBool(os.Getenv("DISABLE_CRDB_RETRIES"))
-		migrate, _            = strconv.ParseBool(os.Getenv("MIGRATE"))
-		smtpHost              = os.Getenv("SMTP_HOST")
-		smtpPort, _           = strconv.ParseUint(os.Getenv("SMTP_PORT"), 10, 64)
-		smtpUsername          = os.Getenv("SMTP_USERNAME")
-		smtpPassword          = os.Getenv("SMTP_PASSWORD")
-		originStr             = env("ORIGIN", fmt.Sprintf("http://localhost:%d", port))
-		authTokenKey          = env("AUTH_TOKEN_KEY", "supersecretkeyyoushouldnotcommit")
+		port, _        = strconv.ParseUint(env("PORT", "3000"), 10, 64)
+		databaseURL    = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless?sslmode=disable")
+		usePostgres, _ = strconv.ParseBool(os.Getenv("USE_POSTGRES"))
+		migrate, _     = strconv.ParseBool(os.Getenv("MIGRATE"))
+		smtpHost       = os.Getenv("SMTP_HOST")
+		smtpPort, _    = strconv.ParseUint(os.Getenv("SMTP_PORT"), 10, 64)
+		smtpUsername   = os.Getenv("SMTP_USERNAME")
+		smtpPassword   = os.Getenv("SMTP_PASSWORD")
+		originStr      = env("ORIGIN", fmt.Sprintf("http://localhost:%d", port))
+		authTokenKey   = env("AUTH_TOKEN_KEY", "supersecretkeyyoushouldnotcommit")
 	)
 
 	fs := flag.NewFlagSet("passwordless", flag.ExitOnError)
 	fs.Uint64Var(&port, "port", port, "HTTP port in which this very server listen")
 	fs.StringVar(&databaseURL, "db", databaseURL, "Cockroach database URL")
-	fs.BoolVar(&disableCRDBRetries, "disable-crdb-retries", disableCRDBRetries, "Disables cockroach transaction retries")
+	fs.BoolVar(&usePostgres, "use-postgres", usePostgres, "Tries to use postgres instead of cockroach")
 	fs.BoolVar(&migrate, "migrate", migrate, "Whether migrate database schema")
 	fs.StringVar(&originStr, "origin", originStr, "URL origin of this very server")
 
@@ -76,8 +76,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 	}
 
 	if migrate {
-		// postgres
-		if disableCRDBRetries {
+		if usePostgres {
 			_, err := db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`)
 			if err != nil {
 				return fmt.Errorf("could not migrate sql schema: %w", err)
@@ -98,7 +97,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 		return errors.New("origin must be absolute")
 	}
 
-	repo := &cockroach.Repository{DB: db, DisableCRDBRetries: disableCRDBRetries}
+	repo := &cockroach.Repository{DB: db, DisableCRDBRetries: usePostgres}
 	mailFromName := "Passwordless"
 	mailFromAddress := "noreply@" + origin.Hostname()
 	magicLinkComposer, err := smtpnotification.MagicLinkComposer(
