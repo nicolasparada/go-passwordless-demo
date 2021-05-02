@@ -16,13 +16,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/nicolasparada/go-passwordless-demo"
 	smtpnotification "github.com/nicolasparada/go-passwordless-demo/notification/smtp"
 	"github.com/nicolasparada/go-passwordless-demo/repo/cockroach"
+	"github.com/nicolasparada/go-passwordless-demo/repo/cockroach/migrations"
 	httptransport "github.com/nicolasparada/go-passwordless-demo/transport/http"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -44,6 +44,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 		port, _               = strconv.ParseUint(env("PORT", "3000"), 10, 64)
 		databaseURL           = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless?sslmode=disable")
 		disableCRDBRetries, _ = strconv.ParseBool(os.Getenv("DISABLE_CRDB_RETRIES"))
+		migrate, _            = strconv.ParseBool(os.Getenv("MIGRATE"))
 		smtpHost              = os.Getenv("SMTP_HOST")
 		smtpPort, _           = strconv.ParseUint(os.Getenv("SMTP_PORT"), 10, 64)
 		smtpUsername          = os.Getenv("SMTP_USERNAME")
@@ -56,6 +57,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 	fs.Uint64Var(&port, "port", port, "HTTP port in which this very server listen")
 	fs.StringVar(&databaseURL, "db", databaseURL, "Cockroach database URL")
 	fs.BoolVar(&disableCRDBRetries, "disable-crdb-retries", disableCRDBRetries, "Disables cockroach transaction retries")
+	fs.BoolVar(&migrate, "migrate", migrate, "Whether migrate database schema")
 	fs.StringVar(&originStr, "origin", originStr, "URL origin of this very server")
 
 	if err := fs.Parse(args); err != nil {
@@ -71,6 +73,13 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("could not ping cockroach: %w", err)
+	}
+
+	if migrate {
+		_, err := db.ExecContext(ctx, migrations.Schema)
+		if err != nil {
+			return fmt.Errorf("could not miragte sql schama: %w", err)
+		}
 	}
 
 	origin, err := url.Parse(originStr)
