@@ -37,7 +37,9 @@ func (repo *Repository) ExecuteTx(ctx context.Context, txFunc func(ctx context.C
 			return fmt.Errorf("could not begin tx: %w", err)
 		}
 
-		defer tx.Rollback()
+		defer func() {
+			_ = tx.Rollback()
+		}()
 
 		err = txFunc(context.WithValue(ctx, keyTx, tx))
 		if err != nil {

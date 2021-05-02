@@ -5,19 +5,14 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/url"
 	"regexp"
 	"time"
 
 	"github.com/hako/branca"
-	"github.com/hako/durafmt"
 	"github.com/nicolasparada/go-passwordless-demo/notification"
 )
-
-//go:embed web/template/mail/magic-link.html.tmpl
-var magicLinkMailTmpl string
 
 const (
 	verificationCodeTTL = time.Minute * 20
@@ -261,10 +256,4 @@ func cloneURL(u *url.URL) *url.URL {
 		*u2.User = *u.User
 	}
 	return u2
-}
-
-var tmplFuncs = template.FuncMap{
-	"human_duration": func(d time.Duration) string {
-		return durafmt.Parse(d).LimitFirstN(1).String()
-	},
 }
