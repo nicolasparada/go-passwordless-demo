@@ -42,7 +42,7 @@ func main() {
 func run(ctx context.Context, logger *log.Logger, args []string) error {
 	var (
 		port, _               = strconv.ParseUint(env("PORT", "3000"), 10, 64)
-		cockroachURL          = env("COCKROACH_URL", "postgresql://root@127.0.0.1:26257/passwordless?sslmode=disable")
+		databaseURL           = env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/passwordless?sslmode=disable")
 		disableCRDBRetries, _ = strconv.ParseBool(os.Getenv("DISABLE_CRDB_RETRIES"))
 		smtpHost              = os.Getenv("SMTP_HOST")
 		smtpPort, _           = strconv.ParseUint(os.Getenv("SMTP_PORT"), 10, 64)
@@ -54,7 +54,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 
 	fs := flag.NewFlagSet("passwordless", flag.ExitOnError)
 	fs.Uint64Var(&port, "port", port, "HTTP port in which this very server listen")
-	fs.StringVar(&cockroachURL, "cockroach", cockroachURL, "CockroachDB URL")
+	fs.StringVar(&databaseURL, "db", databaseURL, "Cockroach database URL")
 	fs.BoolVar(&disableCRDBRetries, "disable-crdb-retries", disableCRDBRetries, "Disables cockroach transaction retries")
 	fs.StringVar(&originStr, "origin", originStr, "URL origin of this very server")
 
@@ -62,7 +62,7 @@ func run(ctx context.Context, logger *log.Logger, args []string) error {
 		return fmt.Errorf("could not parse flags: %w", err)
 	}
 
-	db, err := sql.Open("postgres", cockroachURL)
+	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return fmt.Errorf("could not open cockroach db: %w", err)
 	}
